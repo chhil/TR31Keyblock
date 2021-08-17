@@ -1,15 +1,20 @@
-package org.keyblock.tr31;
+package org.keyblock.thales;
 
 import org.javatuples.Pair;
+import org.keyblock.tr31.Algorithm;
+import org.keyblock.tr31.Export;
+import org.keyblock.tr31.KeyUsage;
+import org.keyblock.tr31.KeyUseFor;
+import org.keyblock.tr31.KeyblockGenerator;
 import org.keyblock.utils.Util;
 
-public class ThalesKeyBlock extends KeyblockGenerator {
+public class ThalesKeyBlockDES extends KeyblockGenerator {
 
     @Override
     protected String createHeader() throws Exception {
         int keylength = 48;
         int blocklength = 16 + optionalblocks + keylength + 8;
-        keyBlock.append("0");// Version ID
+        keyBlock.append("0");// Version ID 0:Des KBPK. 1:AES KBPK
         keyBlock.append(Util.padleft(String.valueOf(blocklength), 4, '0'));
         keyBlock.append(KeyUsage._D0_Data_Encryption.getUsage());
         keyBlock.append(Algorithm._T_Triple_DES.getAlgorithm());
@@ -26,7 +31,7 @@ public class ThalesKeyBlock extends KeyblockGenerator {
     }
 
     public static void main(String[] args) throws Exception {
-        ThalesKeyBlock kbGen = new ThalesKeyBlock();
+        ThalesKeyBlockDES kbGen = new ThalesKeyBlockDES();
         kbGen.KBPK = Util.hexStringToByteArray("89E88CF7931444F334BD7547FC3F380C");// Key block protection
         kbGen.clearKey = Util.hexStringToByteArray("F039121BEC83D26B169BDCD5B22AAF8F");
 

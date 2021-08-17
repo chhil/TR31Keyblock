@@ -1,6 +1,7 @@
 package org.keyblock.tr31;
 
 import java.io.ByteArrayOutputStream;
+import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -43,6 +44,12 @@ abstract public class KeyblockGenerator {
                 byte[] kbpkBytes = KBPK;
                 byte[] kbmkBytes = new byte[kbpkBytes.length];
                 byte[] kbekBytes = new byte[kbpkBytes.length];
+                /*
+                 * The encryption and MAC operations used different keys created by applying
+                 * predefined variants to the input key block protection key. When a TR-31 key
+                 * block is protected using this method, it has the value "A" (X'41') in its key
+                 * block version ID field (byte 0 of the key block header).
+                 */
                 for (int i = 0; i < kbpkBytes.length; i++) {
                     kbekBytes[i] = (byte) (kbpkBytes[i] ^ 'E'); // 0x45 = E
 
@@ -53,15 +60,18 @@ abstract public class KeyblockGenerator {
 
                 break;
             case B_Derivation:
-
-                byte[] KBEK_1 = CMAC.generateMACForKeyblockTypB(Util.hexStringToByteArray("0100000000000080"), KBPK);
-                byte[] KBEK_2 = CMAC.generateMACForKeyblockTypB(Util.hexStringToByteArray("0200000000000080"), KBPK);
+                /*
+                 * Method "B" uses an authenticated encryption scheme and cryptographic key
+                 * derivation methods to produce the encryption and MAC keys.
+                 */
+                byte[] KBEK_1 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0100000000000080"), KBPK);
+                byte[] KBEK_2 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0200000000000080"), KBPK);
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
                 os.write(KBEK_1);
                 os.write(KBEK_2);// just concatenation the 2 byte array parts
                 KBEK = os.toByteArray();
-                byte[] KBMK_1 = CMAC.generateMACForKeyblockTypB(Util.hexStringToByteArray("0100010000000080"), KBPK);
-                byte[] KBMK_2 = CMAC.generateMACForKeyblockTypB(Util.hexStringToByteArray("0200010000000080"), KBPK);
+                byte[] KBMK_1 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0100010000000080"), KBPK);
+                byte[] KBMK_2 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0200010000000080"), KBPK);
                 os = new ByteArrayOutputStream();
                 os.write(KBMK_1);
                 os.write(KBMK_2);// just concatenation the 2 byte array parts
@@ -76,6 +86,13 @@ abstract public class KeyblockGenerator {
         return new Pair<>(Util.bytesToHexString(KBEK), Util.bytesToHexString(KBMK));
     }
 
+    /**
+     * TR31 and Thales have slightly different headers. This abstract method is to
+     * override and plugin the behavior.
+     *
+     * @return
+     * @throws Exception
+     */
     abstract protected String createHeader() throws Exception;
 
     /*
@@ -88,10 +105,20 @@ abstract public class KeyblockGenerator {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         outputStream.write(lengthEncodedHex);
         outputStream.write(clearKey);
-        // outputStream.write(randomPadding);
+        // outputStream.write(randomPadding); Python code had this but it seems
+        // irrelevant
         if (outputStream.toByteArray().length % 8 != 0) {
             int padLength = 8 - (outputStream.toByteArray().length % 8);
-            byte[] arrayZeroes = new byte[padLength];
+            byte[] arrayZeroes = new byte[padLength];// this creates a byte array initialized with 0x0
+            // Select a random byte for padding. This way the same key will be padded
+            // differently resulting in a different mac. Hence safer
+            SecureRandom sr = new SecureRandom();
+            int randomPad = sr.nextInt(256);
+
+            for (int i = 0; i < arrayZeroes.length; i++) {
+                arrayZeroes[i] = (byte) randomPad;
+            }
+
             outputStream.write(arrayZeroes);
         }
 
@@ -134,7 +161,7 @@ abstract public class KeyblockGenerator {
             dataForMacCalculation.write(header.getBytes());
             // System.out.println(Util.bytesToHexString(generatePt̋KB()));
             dataForMacCalculation.write(generatePt̋KB());// use plain text key
-            byte[] mac = CMAC.generateMACForKeyblockTypB(dataForMacCalculation.toByteArray(), KBMK);
+            byte[] mac = CMAC.generateMACForKeyblockTypeB(dataForMacCalculation.toByteArray(), KBMK);
             ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
 
             byte[] iv = mac;

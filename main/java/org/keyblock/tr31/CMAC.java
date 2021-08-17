@@ -18,8 +18,8 @@ import org.keyblock.utils.Util;
 
 public class CMAC {
 
-    private static final String DESEDE_CBC_NO_PADDING = "DESede/CBC/NoPadding";
-    private static final String DESEDE_ECB_NO_PADDING = "DESede/ECB/NoPadding";
+    private static final String DESEDE_CBC_NO_PADDING = "DESede/CBC/NoPadding";// CBC needs IV
+    private static final String DESEDE_ECB_NO_PADDING = "DESede/ECB/NoPadding";// ECB does not need IV
     private static final String CRYPT_ALGORITHM       = "DESede";
 
     public static Pair<String, String> generateSubKeys(byte[] key, byte[] constantData) throws Exception {
@@ -53,7 +53,7 @@ public class CMAC {
 
     }
 
-    public static byte[] generateMACForKeyblockTypB(byte[] message, byte[] kbpk) throws Exception {
+    public static byte[] generateMACForKeyblockTypeB(byte[] message, byte[] kbpk) throws Exception {
 
         Pair<String, String> keyPair = generateSubKeys(kbpk, Util.hexStringToByteArray("000000000000001B"));
         // System.out.println(keyPair);
@@ -64,7 +64,7 @@ public class CMAC {
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
 
         byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(kbpk);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, "DESede");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
 
         Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
@@ -90,19 +90,15 @@ public class CMAC {
         byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(macKey);
         SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
 
-        String PADDING = DESEDE_CBC_NO_PADDING;// PKCS5Padding just produces a biffer mac and the offset fpr [artial
-                                               // just changes.
-        Cipher cipher = Cipher.getInstance(PADDING);
+        // PKCS5Padding just produces a bigger mac and the offset for partial just
+        // changes.
+        Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
-
-        // MAC =
-        // 8354df9d84cbcd3ee4ccc87d026f8bf3a90f1e1cc91aef206928d15c70487783e8041f72b0876e8e
         byte[] mac = cipher.doFinal(data);
         // System.out.println("encryptedKeyBlock :" + ISOUtil.hexString(data));
         // System.out.println("Full mac :" + ISOUtil.hexString(mac));
         byte[] partialMac = new byte[4];
         System.arraycopy(mac, mac.length - 8, partialMac, 0, 4);// K1 K2
-
         // System.out.println("PartialMac\n" + ISOUtil.hexString(partialMac));
         KeyblockGenerator.mac = partialMac;
         return partialMac;
