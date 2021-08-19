@@ -16,11 +16,11 @@ public class ThalesKeyBlockDES extends KeyblockGenerator {
         int blocklength = 16 + optionalblocks + keylength + 8;
         keyBlock.append("0");// Version ID 0:Des KBPK. 1:AES KBPK
         keyBlock.append(Util.padleft(String.valueOf(blocklength), 4, '0'));
-        keyBlock.append(KeyUsage._D0_Data_Encryption.getUsage());
-        keyBlock.append(Algorithm._T_Triple_DES.getAlgorithm());
-        keyBlock.append(KeyUseFor.B_Both_Encrypt_and_Decrypt.get());
+        keyBlock.append(KeyUsage._D0_DATA_ENCRYPTION.getUsage());
+        keyBlock.append(Algorithm._T_TRIPLE_DES.getAlgorithm());
+        keyBlock.append(KeyUseFor.B_BOTH_ENCRYPT_AND_DECRYPT.get());
         keyBlock.append("00");// version number
-        keyBlock.append(Export.E_Exportable_under_trusted_key.get());
+        keyBlock.append(Export.E_EXPORTABLE_UNDER_TRUSTED_KEY.get());
         if (optionalblocks == 0) {
             keyBlock.append("00");
         }
@@ -37,12 +37,12 @@ public class ThalesKeyBlockDES extends KeyblockGenerator {
 
         System.out.println("Input KBPK               :" + Util.bytesToHexString(kbGen.KBPK));
         System.out.println("Input clear key          :" + Util.bytesToHexString(kbGen.clearKey));
-        Pair<String, String> kbPair = kbGen.generateKBkeys();
-        System.out.println("Generated KBEK           :" + kbPair.getValue0());
-        System.out.println("Generated KBMK           :" + kbPair.getValue1());
+        Pair<String, String> kbPair_KBEK_KBMK = kbGen.generateKeyPairKBEKnKBMK(kbGen.KBPK);
+        System.out.println("Generated KBEK           :" + kbPair_KBEK_KBMK.getValue0());
+        System.out.println("Generated KBMK           :" + kbPair_KBEK_KBMK.getValue1());
         System.out.println("Generated Header         :" + kbGen.createHeader());
 
-        System.out.println("Generated Plain Text Key :" + Util.bytesToHexString(kbGen.generatePt̋KB()));
+        System.out.println("Generated Plain Text Key :" + Util.bytesToHexString(kbGen.generateLengthEncodedClearKey()));
 
         kbGen.generateEncryptedKeyBlock();
         System.out.println("Generated Encrypted Key  :" + Util.bytesToHexString(kbGen.encryptedKey));

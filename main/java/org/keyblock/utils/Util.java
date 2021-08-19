@@ -157,6 +157,9 @@ public class Util {
     public static byte[] xor(byte[] op1, byte[] op2) {
         byte[] result;
         // Use the smallest array
+        if (op2.length != op2.length) {
+            throw new RuntimeException("BLAH");
+        }
         if (op2.length > op1.length) {
             result = new byte[op1.length];
         }
@@ -179,5 +182,46 @@ public class Util {
             }
         }
         return result;
+    }
+
+    /**
+     * Concatenates two byte arrays (array1 and array2)
+     *
+     * @param array1
+     *            first part
+     * @param array2
+     *            last part
+     * @return the concatenated array
+     */
+    public static byte[] concat(byte[] array1, byte[] array2) {
+        byte[] concatArray = new byte[array1.length + array2.length];
+        System.arraycopy(array1, 0, concatArray, 0, array1.length);
+        System.arraycopy(array2, 0, concatArray, array1.length, array2.length);
+        return concatArray;
+    }
+
+    /**
+     * Concatenates two byte arrays (array1 and array2)
+     *
+     * @param array1
+     *            first part
+     * @param beginIndex1
+     *            initial index
+     * @param length1
+     *            length
+     * @param array2
+     *            last part
+     * @param beginIndex2
+     *            last part index
+     * @param length2
+     *            last part length
+     * @return the concatenated array
+     */
+    public static byte[] concat(byte[] array1, int beginIndex1, int length1, byte[] array2, int beginIndex2,
+            int length2) {
+        byte[] concatArray = new byte[length1 + length2];
+        System.arraycopy(array1, beginIndex1, concatArray, 0, length1);
+        System.arraycopy(array2, beginIndex2, concatArray, length1, length2);
+        return concatArray;
     }
 }

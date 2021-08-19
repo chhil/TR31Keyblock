@@ -29,6 +29,7 @@ public class CMAC {
         public static final class COUNTER {
             public static final String _01 = "01";
             public static final String _02 = "02";
+            public static final String _03 = "03";
         }
 
         public static final class KEYUSAGE {
@@ -270,6 +271,21 @@ public class CMAC {
 
     }
 
+    /**
+     * Check message length is a multiple of block size.
+     * If the mssage length mod blocksize is not 0 (has remainder) pad the message
+     * with bytes0x80 follwed by 0's till message length is a multiple of BLOCKSIZE
+     * copy the last block to the endblock and XOR it with K2
+     *
+     * Else message is a multiple of the blocksize,sopy the last block endblock and
+     * XOR it with K1
+     *
+     *
+     * @param message
+     * @param subKeyPairK1K2
+     * @return Endblock (padded or otherwise and XOR'd with either K1 or K2
+     * @throws Exception
+     */
     protected static byte[] getEndblock(byte[] message, Pair<String, String> subKeyPairK1K2) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         baos.write(message);
@@ -280,7 +296,7 @@ public class CMAC {
             baos.write(0x80); // this is for the placing that first binary 1.
             baos.write(new byte[padLen - 1]);// array initialized by default to 0x0's
             byte[] source = baos.toByteArray();
-            System.arraycopy(source, source.length - BLOCKSIZE, endblock, 0, source.length);
+            System.arraycopy(source, source.length - BLOCKSIZE, endblock, 0, BLOCKSIZE);
             // use K2 when not a divisible message
             endblock = Util.xor(Util.hexStringToByteArray(subKeyPairK1K2.getValue1()), endblock);
 
@@ -296,10 +312,10 @@ public class CMAC {
 
 
 
-    public static Pair<String, String> generateK1K2FromAES_KBPK(byte[] kbpk) throws Exception {
+    public static Pair<String, String> generateK1K2FromAES_KBPKorKBMK(byte[] key) throws Exception {
 
         // byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(key);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(kbpk, "AES");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
 
         Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
@@ -323,10 +339,11 @@ public class CMAC {
         // TODO Auto-generated method stub
 
         byte[] xorResult = Util.xor(kPart, message);
-
+        System.out.println(Util.bytesToHexString(xorResult));
         // Diagram in ANSI spec incorrect, shows 24 bytes but its the whole KBPK
-        SecretKeySpec secretKeySpec = new SecretKeySpec(kbpk, "AES");
 
+        byte[] triple = KeyblockGenerator.convertToTripleLengthKey(kbpk);
+        SecretKeySpec secretKeySpec = new SecretKeySpec(triple, "AES");
         Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
 
@@ -343,16 +360,17 @@ public class CMAC {
         // Replace last 8 bytes of the data with the end block which has used the last 8
         // bytes to and XOR'd with appropriate K1 or K2 key of KBMK. This replaced value
         // will be fed into the TDEA encryption
-        System.arraycopy(endblock, 0, data, data.length - endblock.length, endblock.length);
+        System.arraycopy(endblock, 0, data, data.length - BLOCKSIZE, BLOCKSIZE);
         // System.out.println("Endblock Changed Data :\n" + Util.dumpHexString(data));
 
-        byte[] iv = Util.hexStringToByteArray(_0000000000000000 + _0000000000000000);
-        byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(keyKBMK);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, "AES");
+
+        // byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(keyKBMK);
+        SecretKeySpec secretKeySpec = new SecretKeySpec(keyKBMK, "AES");
 
         // ANSI Spec is incorrect, shows usage of ECB instead of CBC
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
+        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec,
+                new IvParameterSpec(Util.hexStringToByteArray(_0000000000000000 + _0000000000000000)));
 
         byte[] result = cipher.doFinal(data);
         System.out.println("Final Data :\n" + Util.dumpHexString(result));
