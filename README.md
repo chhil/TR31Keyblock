@@ -16,3 +16,10 @@ You can follow the code from the main methods to understand it.
 
 This keyblocks generated have been tested with the eftlabs BP-tools simulator by generating the keyblock using the code and pasting the output of  (header+encryptedkey+mac) into the simulator to see if it can parse it and show you the clear key that you had encrypted.
 
+
+Useful documents to refer to 
+
+1. [Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38b.pdf)
+2. [NIST SP 800-108 Recommendation for Key Derivation Using Pseudorandom Functions (Revised)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf)
+3. ASC X9 TR 31-2018 (purchase required from ANSI store).
+
