@@ -8,40 +8,73 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.javatuples.Pair;
+import org.keyblock.tr31.CMAC.CONSTANTS;
 import org.keyblock.utils.Util;
 
+//@formatter:off
+
+
+//@formatter:on
+
 abstract public class KeyblockGenerator {
+
     private static final String CRYPTP_ALGORITHM_TRIPLE_DES = "DESede";
     public static final String  DESEDE_CBC_NO_PADDING       = "DESede/CBC/NoPadding";
     public byte[]               KBPK;                                                 // Key block protection key, e.g.
                                                                                       // your KEK
                                                                                       // key
     public byte[]               clearKey;
-    public byte[]               KBEK;                                                 // key derived from KBPK for
-                                                                                      // encrypting the clear
-                                                                                      // key // Key Block Encryption
-    public byte[]               KBMK;                                                 // drived key to MAC // Key block
-                                                                                      // MAC key
+    // MAC key
     public static byte[]        ptKeyBlock;                                           // Plain key with length prepended
                                                                                       // and padding
                                                                                       // appended.
     public static byte[]        mac;
-    public KeyblockType         keyBlockType                = KeyblockType.A_VARIANT; // A or B
+    public KeyblockType         keyBlockType                = KeyblockType.A_KEY_VARIANT_BINDING; // A or B
     public StringBuilder        keyBlock                    = new StringBuilder();
     byte[]                      randomPadding               = { 0x0, 0x0 };
 
     public int                  optionalblocks              = 0;
-    protected String            header;
+    public String               header;
     public byte[]               finalKeyBlock;
     public byte[]               encryptedKey;
+    public Pair<String, String> KBEK_KBMK_pair_fromKBPK;
+    public static KeyUsage      keyUsage                    = KeyUsage._D0_DATA_ENCRYPTION;
+    public static Algorithm     algorithm                   = Algorithm._T_TRIPLE_DES;
+    public KeyUseFor            keyUseFor                   = KeyUseFor.B_BOTH_ENCRYPT_AND_DECRYPT;
+    public static Export        export                      = Export.E_EXPORTABLE_UNDER_TRUSTED_KEY;
 
-    public Pair<String, String> generateKBkeys() throws Exception {
-        // Generate the derivded keys from KBPK , KBEK (keyblock encryption key) and
-        // KBMK (keyblock MAC key)
+    /**
+     * Derive KBEK (encryption key) and KBMK (mac/authentication key) from KBPK
+     * (protection key)
+     *
+     * @return
+     * @throws Exception
+     */
+    public Pair<String, String> generateKeyPairKBEKnKBMK(byte[] kbpk) throws Exception {
 
+        byte[] KBEK; // key derived from KBPK for encrypting the clear key
+        byte[] KBMK; // derived key to MAC. generated on header_length encoded clear key
+
+        /*@formatter:off
+        +------------+          +---+
+        |            +---->KBEK_1   |
+        | KBPK       |              +---->KBEK
+        |            +---->KBEK_2   |
+        +------------+          +---+
+
+
+
+
+        +------------+          +--+
+        |            +---->KBMK_1  |
+        | KBPK       |             +---->KBMK
+        |            +---->KBMK_2  |
+        +------------+          +--+
+@formatter:on
+*/
         switch (keyBlockType) {
-            case A_VARIANT:
-                byte[] kbpkBytes = KBPK;
+            case A_KEY_VARIANT_BINDING:
+                byte[] kbpkBytes = kbpk;
                 byte[] kbmkBytes = new byte[kbpkBytes.length];
                 byte[] kbekBytes = new byte[kbpkBytes.length];
                 /*
@@ -52,39 +85,114 @@ abstract public class KeyblockGenerator {
                  */
                 for (int i = 0; i < kbpkBytes.length; i++) {
                     kbekBytes[i] = (byte) (kbpkBytes[i] ^ 'E'); // 0x45 = E
-
                     kbmkBytes[i] = (byte) (kbpkBytes[i] ^ 'M'); // ox4D = M
                 }
                 KBMK = kbmkBytes;
                 KBEK = kbekBytes;
+                return new Pair<>(Util.bytesToHexString(KBEK), Util.bytesToHexString(KBMK));
 
-                break;
-            case B_Derivation:
-                /*
-                 * Method "B" uses an authenticated encryption scheme and cryptographic key
-                 * derivation methods to produce the encryption and MAC keys.
-                 */
-                byte[] KBEK_1 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0100000000000080"), KBPK);
-                byte[] KBEK_2 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0200000000000080"), KBPK);
+
+            case B_TDEA_KEY_DERIVATION_BINDING: {
+                Pair<String, String> k1k2FromKBPK = CMAC.generateK1K2FromTDEA_KBPK(KBPK);
+                System.out.println("K1 K2 Pair KBPK :" + k1k2FromKBPK);
+                String key1 = k1k2FromKBPK.getValue0();
+                k1k2FromKBPK.getValue1();
+                String derivationConstantKBEK01 = CONSTANTS.COUNTER._01 + CONSTANTS.KEYUSAGE._0000_ENCRYPTION
+                        + CONSTANTS.SEPATATOR + CONSTANTS.ALGORITHM._0000_2TDEA + CONSTANTS.KEYLENGTH._0080_2TDEA;
+                byte[] KBEK_1 = CMAC.generateKeyPartForKeyblockTypeB(Util.hexStringToByteArray(derivationConstantKBEK01),
+                        KBPK, key1);
+                // 0200000000000080
+                String derivationConstantKBEK02 = CONSTANTS.COUNTER._02 + CONSTANTS.KEYUSAGE._0000_ENCRYPTION
+                        + CONSTANTS.SEPATATOR + CONSTANTS.ALGORITHM._0000_2TDEA + CONSTANTS.KEYLENGTH._0080_2TDEA;
+                byte[] KBEK_2 = CMAC.generateKeyPartForKeyblockTypeB(Util.hexStringToByteArray(derivationConstantKBEK02),
+                        KBPK, key1);
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
                 os.write(KBEK_1);
                 os.write(KBEK_2);// just concatenation the 2 byte array parts
                 KBEK = os.toByteArray();
-                byte[] KBMK_1 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0100010000000080"), KBPK);
-                byte[] KBMK_2 = CMAC.generateMACForKeyblockTypeB(Util.hexStringToByteArray("0200010000000080"), KBPK);
+                String derivationConstantKBMK01 = CONSTANTS.COUNTER._01 + CONSTANTS.KEYUSAGE._0001_MAC
+                        + CONSTANTS.SEPATATOR + CONSTANTS.ALGORITHM._0000_2TDEA + CONSTANTS.KEYLENGTH._0080_2TDEA;
+                byte[] KBMK_1 = CMAC.generateKeyPartForKeyblockTypeB(Util.hexStringToByteArray(derivationConstantKBMK01),
+                        KBPK, key1);
+                String derivationConstantKBMK02 = CONSTANTS.COUNTER._02 + CONSTANTS.KEYUSAGE._0001_MAC
+                        + CONSTANTS.SEPATATOR + CONSTANTS.ALGORITHM._0000_2TDEA + CONSTANTS.KEYLENGTH._0080_2TDEA;
+                byte[] KBMK_2 = CMAC.generateKeyPartForKeyblockTypeB(Util.hexStringToByteArray(derivationConstantKBMK02),
+                        KBPK, key1);
                 os = new ByteArrayOutputStream();
                 os.write(KBMK_1);
                 os.write(KBMK_2);// just concatenation the 2 byte array parts
                 KBMK = os.toByteArray();
+                KBEK_KBMK_pair_fromKBPK = new Pair<>(Util.bytesToHexString(KBEK), Util.bytesToHexString(KBMK));
 
+                return KBEK_KBMK_pair_fromKBPK;
+
+            }
+
+
+            case C_TDEA_KEY_VARIANT_BINDING:
                 break;
+            case D_AES_KEY_DERIVATION: {
+
+                Pair<String, String> k1k2FromKBPK = CMAC.generateK1K2FromAES_KBPK(KBPK);
+
+                String temp = null;
+
+                switch (KBPK.length * 8) {
+                    case 128:
+                        temp = CONSTANTS.ALGORITHM._0002_AES128 + CONSTANTS.KEYLENGTH._0080_AES128;
+                        break;
+                    case 192:
+                        temp = CONSTANTS.ALGORITHM._0003_AES192 + CONSTANTS.KEYLENGTH._00C0_AES192;
+                        break;
+                    case 256:
+                        temp = CONSTANTS.ALGORITHM._0004_AES256 + CONSTANTS.KEYLENGTH._0100_AES256;
+                        break;
+                    default:
+                        throw new Exception("Invalid KBPK length :" + KBPK.length);
+
+                }
+
+                String derivationConstantKBEK01 = CONSTANTS.COUNTER._01 + CONSTANTS.KEYUSAGE._0000_ENCRYPTION
+                        + CONSTANTS.SEPATATOR + temp;
+                String padding = "8000000000000000";
+                byte[] k2 = Util.hexStringToByteArray(k1k2FromKBPK.getValue1());
+                byte[] KBEK_1 = CMAC.generateKeyPartForKeyblockTypeD(
+                        Util.hexStringToByteArray(derivationConstantKBEK01 + padding), k2, KBPK);
+                String derivationConstantKBEK02 = CONSTANTS.COUNTER._02 + CONSTANTS.KEYUSAGE._0000_ENCRYPTION
+                        + CONSTANTS.SEPATATOR + temp;
+                byte[] KBEK_2 = CMAC.generateKeyPartForKeyblockTypeD(
+                        Util.hexStringToByteArray(derivationConstantKBEK02 + padding), k2, KBPK);
+                ByteArrayOutputStream os = new ByteArrayOutputStream();
+                os.write(KBEK_1);
+                os.write(KBEK_2);// just concatenation the 2 byte array parts
+                KBEK = os.toByteArray();
+                String derivationConstantKBMK01 = CONSTANTS.COUNTER._01 + CONSTANTS.KEYUSAGE._0001_MAC
+                        + CONSTANTS.SEPATATOR + temp;
+                byte[] KBMK_1 = CMAC.generateKeyPartForKeyblockTypeD(
+                        Util.hexStringToByteArray(derivationConstantKBMK01 + padding), k2, KBPK);
+                String derivationConstantKBMK02 = CONSTANTS.COUNTER._02 + CONSTANTS.KEYUSAGE._0001_MAC
+                        + CONSTANTS.SEPATATOR + temp;
+                byte[] KBMK_2 = CMAC.generateKeyPartForKeyblockTypeD(
+                        Util.hexStringToByteArray(derivationConstantKBMK02 + padding), k2, KBPK);
+                os = new ByteArrayOutputStream();
+                os.write(KBMK_1);
+                os.write(KBMK_2);// just concatenation the 2 byte array parts
+                KBMK = os.toByteArray();
+                CMAC.generateSubKeysForKBMKForCMACWithAES(KBMK);
+                KBEK_KBMK_pair_fromKBPK = new Pair<>(Util.bytesToHexString(KBEK), Util.bytesToHexString(KBMK));
+                return KBEK_KBMK_pair_fromKBPK;
+            }
+
+
             default:
-                break;
+                throw new Exception("unknown keyblock type to derive keys");
 
         }
+        return null;
 
-        return new Pair<>(Util.bytesToHexString(KBEK), Util.bytesToHexString(KBMK));
+
     }
+
 
     /**
      * TR31 and Thales have slightly different headers. This abstract method is to
@@ -96,9 +204,9 @@ abstract public class KeyblockGenerator {
     abstract protected String createHeader() throws Exception;
 
     /*
-     * generate plain text keyblock
+     * generate length encoded clear key
      */
-    public byte[] generatePt̋KB() throws Exception {
+    public byte[] generateLengthEncodedClearKey() throws Exception {
         int keyLengthBits = clearKey.length * 8;
         byte[] lengthEncodedHex = Util.hexStringToByteArray(Util.padleft(Integer.toHexString(keyLengthBits), 4, '0'));
 
@@ -107,18 +215,20 @@ abstract public class KeyblockGenerator {
         outputStream.write(clearKey);
         // outputStream.write(randomPadding); Python code had this but it seems
         // irrelevant
-        if (outputStream.toByteArray().length % 8 != 0) {
-            int padLength = 8 - (outputStream.toByteArray().length % 8);
-            byte[] arrayZeroes = new byte[padLength];// this creates a byte array initialized with 0x0
-            // Select a random byte for padding. This way the same key will be padded
-            // differently resulting in a different mac. Hence safer
+
+
+        if (outputStream.toByteArray().length % CMAC.BLOCKSIZE != 0) {
+            outputStream.toByteArray();
+            int padLength = CMAC.BLOCKSIZE - (outputStream.toByteArray().length % CMAC.BLOCKSIZE);
+            byte[] arrayZeroes = new byte[padLength];
+            // this creates a byte array initialized with 0x0
+            // Fill it with random bytes. Note, this will result in a different MAC value
+            // being generated eveytime even when the key is the same.
             SecureRandom sr = new SecureRandom();
-            int randomPad = sr.nextInt(256);
 
             for (int i = 0; i < arrayZeroes.length; i++) {
-                arrayZeroes[i] = (byte) randomPad;
+                arrayZeroes[i] = (byte) sr.nextInt(256); // random values between 0 to 255
             }
-
             outputStream.write(arrayZeroes);
         }
 
@@ -129,62 +239,98 @@ abstract public class KeyblockGenerator {
 
     protected byte[] generateEncryptedKeyBlock() throws Exception {
 
-        if (keyBlockType == KeyblockType.A_VARIANT) {
-            // IV is first 8 bytes of the header.
-            byte[] iv = header.substring(0, 8)
-                              .getBytes();
-            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        switch (keyBlockType) {
+            case A_KEY_VARIANT_BINDING: {
 
-            // conver 128 bits key i.e. double length 3DES key to triple length 3DES key. K1
-            // K2 K1
-            byte[] tdesKey = convertToTripleLengthKey(KBEK);
+                // IV is first 8 bytes of the header.
+                byte[] iv = header.substring(0, 8)
+                                  .getBytes();
+                IvParameterSpec ivSpec = new IvParameterSpec(iv);
 
-            SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPTP_ALGORITHM_TRIPLE_DES);
-            Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
-            encryptedKey = cipher.doFinal(generatePt̋KB());
-            // System.out.println("Encrypted Key :" + Util.bytesToHexString(encryptedKey));
-            ByteArrayOutputStream dataForMacCalculation = new ByteArrayOutputStream();
-            dataForMacCalculation.write(header.getBytes());
-            dataForMacCalculation.write(encryptedKey);// uses encrypted key
-            ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
-            finalKeyBlockByteStream.write(header.getBytes());
-            finalKeyBlockByteStream.write(encryptedKey);
-            finalKeyBlockByteStream.write(CMAC.generateMACForKeyblockTypeA(dataForMacCalculation.toByteArray(), KBMK));
-            finalKeyBlock = finalKeyBlockByteStream.toByteArray();
-            return finalKeyBlock;
+                // conver 128 bits key i.e. double length 3DES key to triple length 3DES key. K1
+                // K2 K1
+                byte[] tdesKey = convertToTripleLengthKey(
+                        Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue0()));
 
+                SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPTP_ALGORITHM_TRIPLE_DES);
+                Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
+                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
+                encryptedKey = cipher.doFinal(generateLengthEncodedClearKey());
+                // System.out.println("Encrypted Key :" + Util.bytesToHexString(encryptedKey));
+                ByteArrayOutputStream dataForMacCalculation = new ByteArrayOutputStream();
+                dataForMacCalculation.write(header.getBytes());
+                dataForMacCalculation.write(encryptedKey);
+                ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
+                finalKeyBlockByteStream.write(header.getBytes());
+                finalKeyBlockByteStream.write(encryptedKey);
+                finalKeyBlockByteStream.write(
+                        CMAC.generateMACForKeyblockTypeA(dataForMacCalculation.toByteArray(),
+                                Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue1())));
+                finalKeyBlock = finalKeyBlockByteStream.toByteArray();
+                return finalKeyBlock;
+
+            }
+            case B_TDEA_KEY_DERIVATION_BINDING:{
+                byte[] kbmk = Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue1());
+                Pair<String, String> k1k2ForKBMK = CMAC.generateK1K2FromTDEA_KBMK(kbmk);
+                byte[] kbek = Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue0());
+                System.out.println("K1 K2 KBMK :" + k1k2ForKBMK);
+                ByteArrayOutputStream dataForMacCalculation = new ByteArrayOutputStream();
+                dataForMacCalculation.write(header.getBytes());
+                dataForMacCalculation.write(generateLengthEncodedClearKey());// use plain text key
+                byte[] cmac = CMAC.generateMACForKeyblockTypeB(dataForMacCalculation.toByteArray(), k1k2ForKBMK,
+                        kbmk);
+                byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(kbek);
+                SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, "DESede");
+
+                Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
+                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(cmac));
+
+                encryptedKey = cipher.doFinal(ptKeyBlock);
+                ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
+                finalKeyBlockByteStream.write(header.getBytes());
+                finalKeyBlockByteStream.write(encryptedKey);
+                finalKeyBlockByteStream.write(mac);
+                finalKeyBlock = finalKeyBlockByteStream.toByteArray();
+                return finalKeyBlock;
         }
-        if (keyBlockType == KeyblockType.B_Derivation) {
 
-            ByteArrayOutputStream dataForMacCalculation = new ByteArrayOutputStream();
-            dataForMacCalculation.write(header.getBytes());
-            // System.out.println(Util.bytesToHexString(generatePt̋KB()));
-            dataForMacCalculation.write(generatePt̋KB());// use plain text key
-            byte[] mac = CMAC.generateMACForKeyblockTypeB(dataForMacCalculation.toByteArray(), KBMK);
-            ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
 
-            byte[] iv = mac;
-            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+            case C_TDEA_KEY_VARIANT_BINDING:
+                break;
+            case D_AES_KEY_DERIVATION: {
 
-            // conver 128 bits key i.e. double length 3DES key to triple length 3DES key. K1
-            // K2 K1
-            byte[] tdesKey = convertToTripleLengthKey(KBEK);
+                byte[] kbmk = Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue1());
+                Pair<String, String> k1k2ForKBMK = CMAC.generateK1K2FromAES_KBPK(kbmk);
+                byte[] kbek = Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue0());
+                Util.hexStringToByteArray(KBEK_KBMK_pair_fromKBPK.getValue0());
+                System.out.println("K1 K2 KBMK :" + k1k2ForKBMK);
+                ByteArrayOutputStream dataForMacCalculation = new ByteArrayOutputStream();
+                dataForMacCalculation.write(header.getBytes());
+                dataForMacCalculation.write(generateLengthEncodedClearKey());// use plain text key
+                byte[] cmac = CMAC.generateMACForKeyblockTypeD(dataForMacCalculation.toByteArray(), k1k2ForKBMK, kbmk);
+                System.out.println("CMAC : " + Util.bytesToHexString(cmac));
+                byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(kbek);
+                SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, "AES");
 
-            SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPTP_ALGORITHM_TRIPLE_DES);
+                Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(cmac));
 
-            Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
-
-            encryptedKey = cipher.doFinal(generatePt̋KB());
-            finalKeyBlockByteStream.write(header.getBytes());
-            finalKeyBlockByteStream.write(encryptedKey);
-            finalKeyBlockByteStream.write(mac);
-            finalKeyBlock = finalKeyBlockByteStream.toByteArray();
-            return finalKeyBlock;
-
+                encryptedKey = cipher.doFinal(ptKeyBlock);
+                ByteArrayOutputStream finalKeyBlockByteStream = new ByteArrayOutputStream();
+                finalKeyBlockByteStream.write(header.getBytes());
+                finalKeyBlockByteStream.write(encryptedKey);
+                finalKeyBlockByteStream.write(mac);
+                finalKeyBlock = finalKeyBlockByteStream.toByteArray();
+                return finalKeyBlock;
+            }
+            default:
+                break;
         }
-        throw new Exception("Invalid keyblock type " + keyBlockType);
+
+        throw new Exception("Unsupported key block type " + keyBlockType);
+
+
 
     }
 
@@ -202,9 +348,5 @@ abstract public class KeyblockGenerator {
         // its either single, triple or incorrect length
         return key;
     }
-
-    /*
-     * This one used when Keyblock type is A
-     */
 
 }

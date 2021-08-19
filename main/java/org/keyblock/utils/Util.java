@@ -169,4 +169,15 @@ public class Util {
         return result;
 
     }
+
+    public static byte[] shiftLeft(byte[] bytes) {
+        byte[] result = bytes.clone();
+        for (int i = 0; i < result.length; i++) {
+            result[i] <<= 1;
+            if (i < result.length - 1) {
+                result[i] |= (result[i + 1] >> 7) & 1;
+            }
+        }
+        return result;
+    }
 }

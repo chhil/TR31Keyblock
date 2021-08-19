@@ -2,14 +2,17 @@ package org.keyblock.tr31;
 
 public enum KeyUseFor {
 
-                       B_Both_Encrypt_and_Decrypt("B"),
-                       C_MAC_Calculate_Generate_or_Verify("C"),
-                       D_Decrypt_only("D"),
-                       E_Encrypt_only("E"),
-                       G_MAC_Generate_only("G"),
-                       N_No_special_restrictions_or_not_applicable("N"),
-                       S_Signature_only("S"),
-                       V_MAC_Verify_only("V");
+                       B_BOTH_ENCRYPT_AND_DECRYPT("B"),
+                       C_MAC_CALCULATE_GENERATE_OR_VERIFY("C"),
+                       D_DECRYPT_ONLY("D"),
+                       E_ENCRYPT_ONLY("E"),
+                       G_MAC_GENERATE_ONLY("G"),
+                       N_NO_SPECIAL_RESTRICTIONS_OR_NOT_APPLICABLE("N"),
+                       S_SIGNATURE_ONLY("S"),
+                       T_SIGN_AND_DECYPT("T"),
+                       V_MAC_VERIFY_ONLY("V"),
+                       X_DERIVE_OTHER_KEYS("X"),
+                       Y_CREATE_KEY_VARIANTS("Y");
 
     private String useFor;
 

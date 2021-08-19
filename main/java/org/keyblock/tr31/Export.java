@@ -2,9 +2,9 @@ package org.keyblock.tr31;
 
 public enum Export {
 
-                    E_Exportable_under_trusted_key("E"),
-                    N_Non_exportable("N"),
-                    S_Sensitive_Exportable_under_untrusted_key("S");
+                    E_EXPORTABLE_UNDER_TRUSTED_KEY("E"),
+                    N_NON_EXPORTABLE("N"),
+                    S_SENSITIVE_EXPORTABLE_UNDER_UNTRUSTED_KEY("S");
 
     private String type;
 
