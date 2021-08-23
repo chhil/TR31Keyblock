@@ -30,7 +30,7 @@ The code does padding of the pan, it uses 0x0 to pad (spec says use random value
 
 EFTLABS tool used to be freely available but now its license has changed and you need to fill out a form requesting it. I haven't received any response after filling out the form to download an updated version of their tool.
 
-###Usecase
+### Usecase
 1. You need to receive a known TR31 keyblock from an external entity.
 2. You need to send a known TR31 keyblock to an external entity.
 3. Implement functionality in your HSM emulator to generate TR31 keyblock. (either you don't have access to a HSM that can do this for you or your HSM doesn't have the licenses required from the vendor for this functionality.
