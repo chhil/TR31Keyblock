@@ -1,20 +1,31 @@
 # TR31Keyblock
-Understanding and generating Ansi X9.24 TR31 Keyblocks
 
 Creates Ansi X9.24 TR31 key blocks taking inputs of the Key Block Protection Key (KBPK) and the clear key.
 
-2 keys are derived from this KBPK 
-1. KBEK : the key used to encrypt the key.
-1. KBMK : Key used for creating the mac of the data.
+This is the java implementation of work done here https://github.com/peterfillmore/pyTR31. It was used as a starting point and the spec was eventually implemented.
+Python files are also availble in the python folder in the repo and work with python 2.7.
 
+The original python implementation is dated and incomplete (understandably as its 8 years old). 
+This code implements TR31 keblock types
+1.   A :VARIANT_BINDING
+1.   B :TDEA KEY DERIVATION BINDING
+      1. Double length 128 bits
+      2. Triple length 192 bits
+1.   C :TDEA KEY VARIANT BINDING
+1.   D : AES KEY DERIVATION
+      1. 128 bits
+      2. 192 bits
+      3. 256 bits
 
-This is the java implementation of work done here https://github.com/peterfillmore/pyTR31 
-Those files are also availble in the python folder in the repo and work with python 2.7.
+There is a validation implementation when you get an encrypted keyblock and a KBPK. It will generate all keys,  extract the clear key, generate the MAC from the enrypted block and compare it to the one received.
 
-The 2 classes TR31KeyBlock and ThalesKeyblock generate the 2 flavors of the keyblock.
-You can follow the code from the main methods to understand it.
+The Main.java has tests for the various keyblock and key length combinations and is the best place to start and step through the code to understand its inner working.
 
-This keyblocks generated have been tested with the eftlabs BP-tools simulator by generating the keyblock using the code and pasting the output of  (header+encryptedkey+mac) into the simulator to see if it can parse it and show you the clear key that you had encrypted.
+This keyblocks generated have been tested with the EFTLABS BP-tools simulator by generating the keyblock using the code and pasting the output of  (header+encryptedkey+mac) into the simulator to see if it can parse it and show you the clear key that you had encrypted.
+EFTLAB BP-TOOLS was also used to generate keyblocks and used for validity testing using the code.
+The samples provided in the ANSI X9 TR 31-2018 have been tested and outputs matched.
+
+### Note : Currently optional blocks are not supported.
 
 
 Useful documents to refer to 
