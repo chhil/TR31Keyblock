@@ -2,6 +2,7 @@ package org.keyblock.tr31;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public enum KeyUsage {
 
@@ -148,7 +149,7 @@ public enum KeyUsage {
                                                               KeyUseFor.G_MAC_GENERATE_ONLY,
                                                               KeyUseFor.V_MAC_VERIFY_ONLY);
 
-    private String keyUsage;
+    private String          keyUsage;
     private List<KeyUseFor> allowedUsage;
 
     KeyUsage(String ku, KeyUseFor... allowedUsages) {
@@ -168,5 +169,17 @@ public enum KeyUsage {
 
     public List<KeyUseFor> getAllowedusage() {
         return List.copyOf(allowedUsage);
+    }
+
+    public static Optional<KeyUsage> fromString(String temp) {
+
+        // iterate over enums using for loop
+        for (KeyUsage s : KeyUsage.values()) {
+            if (temp.equals(s.getUsage())) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
+
     }
 }

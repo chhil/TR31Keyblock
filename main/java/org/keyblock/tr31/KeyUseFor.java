@@ -1,5 +1,7 @@
 package org.keyblock.tr31;
 
+import java.util.Optional;
+
 public enum KeyUseFor {
 
                        B_BOTH_ENCRYPT_AND_DECRYPT("B"),
@@ -24,4 +26,17 @@ public enum KeyUseFor {
     public String get() {
         return useFor;
     }
+
+    public static Optional<KeyUseFor> fromString(String keyUseFor) {
+
+        // iterate over enums using for loop
+        for (KeyUseFor s : KeyUseFor.values()) {
+            if (keyUseFor.equals(s.get())) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
+
+    }
+
 }

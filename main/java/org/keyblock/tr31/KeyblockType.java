@@ -1,5 +1,7 @@
 package org.keyblock.tr31;
 
+import java.util.Optional;
+
 public enum KeyblockType {
                           /**
                            * Use of A has been deprecated. Use C.
@@ -17,5 +19,17 @@ public enum KeyblockType {
 
     public String getType() {
         return type;
+    }
+
+    public static Optional<KeyblockType> fromString(String blockTypeString) {
+
+        // iterate over enums using for loop
+        for (KeyblockType s : KeyblockType.values()) {
+            if (blockTypeString.equals(s.getType())) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
+
     }
 }

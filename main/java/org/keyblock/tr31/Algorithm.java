@@ -1,5 +1,7 @@
 package org.keyblock.tr31;
 
+import java.util.Optional;
+
 public enum Algorithm {
 
                        _A_AES("A"),
@@ -18,5 +20,17 @@ public enum Algorithm {
 
     public String getAlgorithm() {
         return algorithm;
+    }
+
+    public static Optional<Algorithm> fromString(String algorithm) {
+
+        // iterate over enums using for loop
+        for (Algorithm s : Algorithm.values()) {
+            if (algorithm.equals(s.getAlgorithm())) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
+
     }
 }

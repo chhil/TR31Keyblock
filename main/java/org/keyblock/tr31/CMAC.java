@@ -1,386 +1,357 @@
-
 package org.keyblock.tr31;
-
-import java.io.ByteArrayOutputStream;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.javatuples.Pair;
+import org.javatuples.Triplet;
 import org.keyblock.utils.Util;
 
-/**
- * This is based on the CMAC Specification found at
- * https://www.govinfo.gov/content/pkg/GOVPUB-C13-f05b7969a96dff6e1fae82057f5c211d/pdf/GOVPUB-C13-f05b7969a96dff6e1fae82057f5c211d.pdf
- *
- * @author murtuzachhil
- *
- */
+import at.favre.lib.bytes.Bytes;
+import at.favre.lib.bytes.BytesTransformer.ResizeTransformer.Mode;
+
 public class CMAC {
 
-    public static class CONSTANTS {
-        public static final class COUNTER {
-            public static final String _01 = "01";
-            public static final String _02 = "02";
-            public static final String _03 = "03";
-        }
+    private static byte[] dataToEncrypt;
 
-        public static final class KEYUSAGE {
-            public static final String _0000_ENCRYPTION = "0000";
-            public static final String _0001_MAC        = "0001";
-        }
+    public static void generateCMACK1K2KeysForAES_KBPK(TR31KeyBlock kb) throws Exception {
+        Cipher cipher = kb.getCipherForK1K2AESGeneration();
+        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
 
-        public static final String SEPATATOR = "00";
+        dataToEncrypt = new byte[16];
 
-        public static final class ALGORITHM {
-            public static final String _0000_2TDEA  = "0000";
-            public static final String _0001_3TDEA  = "0001";
-            public static final String _0002_AES128 = "0002";
-            public static final String _0003_AES192 = "0003";
-            public static final String _0004_AES256 = "0004";
+        Bytes S = Bytes.from(cipher.doFinal(dataToEncrypt));
+
+        Bytes K1 = S.leftShift(1);
+        if ((S.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            K1 = K1.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
 
         }
 
-        public static final class KEYLENGTH {
+        Bytes K2 = K1.leftShift(1);
 
-            public static final String _0080_2TDEA  = "0080";
-            public static final String _00C0_3TDEA  = "00C0";
-            public static final String _0080_AES128 = "0080";
-            public static final String _00C0_AES192 = "00C0";
-            public static final String _0100_AES256 = "0100";
+        if ((K1.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            K2 = K2.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
 
         }
-        /*
-         * Definition of "01 0000 00 0000 0080"
-         * pos0-pos1 = counter = 01 = Values of 01 and 02
-         * pos2-pos5 = key usage indicator= 0000 = 0x0000 encryption 0x0001 = MAC
-         * pos6-pos7 = separator = 0x00
-         * pos8-pos11 = algorithm = 0000 = 0x0000 2-Key TDEA, 0x0001 = 3-Key TDE, 0x0002
-         * AES 128 bit 0x0003 = AES 192 bit 0x0004 = AES 256 bit
-         * pos12-pos15 = length of key generated = 0x0080 =
-         * Values : 0x0080 if one 2-key TDEA key ,0x00C0 if one 3-key TDEA,0x0080 if
-         * AES-128,0x00C0 if AES-192,0x0100 if one AES-256
-         */
+
+        kb.setKeyPairCMACK1K2KBPK(new Pair<>(K1, K2));
 
     }
 
-    private static final String _0000000000000000_0000000000000087 = "00000000000000000000000000000087";
+    public static Pair<Bytes, Bytes> generate192AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
+            String derivationConstant1, String derivationConstant2) throws Exception {
 
-    private static final String _0000000000000000                  = "0000000000000000";
+        Bytes result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant1)));
+        //
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] kbek1 = cipher.doFinal(result.array());
 
-    private static final String _0000000000000000_0000000000000000 = "00000000000000000000000000000000";
+        result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant2)));
+        //
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] kbek2 = cipher.doFinal(result.array());
 
-    private static final String _00000000_0000001B = "000000000000001B";
+        // Since KBPK is 192, derived key must also be 192
+        return new Pair<>(Bytes.from(kbek1),
 
-    public static int           BLOCKSIZE                          = 8;                                 // change it to
-                                                                                                        // 16 for AES
-
-    private static final String DESEDE_CBC_NO_PADDING = "DESede/CBC/NoPadding";// CBC needs IV
-    private static final String DESEDE_ECB_NO_PADDING = "DESede/ECB/NoPadding";// ECB does not need IV
-    private static final String CRYPT_ALGORITHM       = "DESede";
-
-    /**
-     * <pre>
-     * Steps:
-    1. Let L = CIPHK(0000000000000000). Caluclate cipher using the input key and 8 bytes of 0x0
-    2.   If MSB1(L) = 0, then K1 = L << 1;
-         Else K1 = (L << 1) xor 000000000000001B
-    3.   If MSB1(K1) = 0, then K2 = K1 << 1;
-    Else K2 = (K1 << 1) xor 000000000000001B
-     * </pre>
-     *
-     * @param key
-     *            KBPK
-     * @param constantData
-     *            "000000000000001B" (in bytes). Its basically a 64 bit number R64 =
-     *            0^59 11011 (binary).
-     * @return Key Pair K1 and K2 each 8 bytes wide (equal to the block size)
-     * @throws Exception
-     */
-    public static Pair<String, String> generateK1K2FromTDEA_KBPK(byte[] kbpk) throws Exception {
-
-        return generateK1K2FromTDEAKey(kbpk);
-
+                          Bytes.from(kbek2)
+                               .resize(8, Mode.RESIZE_KEEP_FROM_ZERO_INDEX));
 
     }
 
-    public static Pair<String, String> generateK1K2FromTDEA_KBMK(byte[] kbmk) throws Exception {
+    public static void generateCMACK1K2KeysForAES_KBMK(TR31KeyBlock kb) throws Exception {
+        Cipher cipher = kb.getCipherForK1K2AESGeneration();
+        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBMK());
 
-        return generateK1K2FromTDEAKey(kbmk);
+        dataToEncrypt = new byte[16];
 
-    }
+        Bytes S = Bytes.from(cipher.doFinal(dataToEncrypt));
 
-    protected static Pair<String, String> generateK1K2FromTDEAKey(byte[] key) throws NoSuchAlgorithmException,
-            NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, Exception {
-        // Subkey derivation for CMAC with TDEA
-        byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(key);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
-
-        Cipher cipher = Cipher.getInstance(DESEDE_ECB_NO_PADDING);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
-        // Step 1: the block cipher is applied to the block that consists entirely of
-        // ‘0’ bits.
-        byte[] result = cipher.doFinal(Util.hexStringToByteArray(_0000000000000000)); // Encrypt 0's with key,
-
-        byte[] K1 = getSubkeyPart(_00000000_0000001B, result);// step2
-        byte[] K2 = getSubkeyPart(_00000000_0000001B, K1); // step 3
-
-        return new Pair<>(Util.bytesToHexString(K1), Util.bytesToHexString(K2));
-    }
-
-    /**
-     * Keyblock type D is AES, so crypto operations are AES based
-     *
-     * @param key
-     *            KBPK
-     * @return KeyPair subkeys K1,K2
-     * @throws Exception
-     */
-    public static Pair<String, String> generateSubKeysForKBMKForCMACWithAES(byte[] key) throws Exception {
-
-        // byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(key);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
-        // Step 1: the block cipher is applied to the block that consists entirely of
-        // ‘0’ bits.
-
-        byte[] result = cipher.doFinal(Util.hexStringToByteArray(_0000000000000000_0000000000000000));
-
-        result = Util.shiftLeft(result);
-        byte[] K1 = Util.xor(Util.hexStringToByteArray(_0000000000000000_0000000000000087), result);
-        String hexK1 = Util.bytesToHexString(K1);
-        K1 = Util.shiftLeft(K1);
-
-        byte[] K2 = Util.xor(Util.hexStringToByteArray(_0000000000000000_0000000000000087), K1);
-        String hexK2 = Util.bytesToHexString(K2);
-        return new Pair<>(hexK1, hexK2);
-
-    }
-
-    protected static byte[] getSubkeyPart(String constantData, byte[] result) throws Exception {
-        byte[] constantDataBytes = Util.hexStringToByteArray(constantData);
-        // If MSB is not 1, then K_PART is the left shifted value
-        byte[] K_PART = Util.shiftLeft(result);
-        if ((result[0] & 0x80) == 0x80) {// Check MSB =1 after previous left shift
-            K_PART = Util.xor(constantDataBytes, K_PART);
+        Bytes KM1 = S.leftShift(1);
+        if ((S.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            KM1 = KM1.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
 
         }
-        return K_PART;
+
+        Bytes KM2 = KM1.leftShift(1);
+
+        if ((KM1.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            KM2 = KM2.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
+
+        }
+
+        kb.setKeyPairCMACKM1KM2KBMK(new Pair<>(KM1, KM2));
+
     }
 
-
-    /**
-     * @param derivationConstant
-     * @param kbpk
-     * @return
-     *         A MAC which is 64 bits (8 bytes) for keyblock type B derivation
-     *         method is used.
-     * @throws Exception
-     */
-    public static byte[] generateKeyPartForKeyblockTypeB(byte[] derivationConstant, byte[] kbpk, String keyK1)
+    public static Pair<Bytes, Bytes> generateCMACK1K2KeysForKey(SecretKeySpec keySpec, Cipher cipher, TR31KeyBlock kb,
+            byte[] intialDataToEncrypt, String derivationConstantForKey1, String derivationConstantForKey2)
             throws Exception {
 
-        byte[] keyK1xorDerivationConstantresult = Util.xor(Util.hexStringToByteArray(keyK1),
-                derivationConstant);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        dataToEncrypt = intialDataToEncrypt;
 
-        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        Bytes S = Bytes.from(cipher.doFinal(dataToEncrypt));
+        Bytes K1 = S.leftShift(1);
 
-        byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(kbpk);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
-
-        Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
-
-        return cipher.doFinal(keyK1xorDerivationConstantresult);
-
-    }
-
-    public static byte[] generateMACForKeyblockTypeB(byte[] data, Pair<String, String> k1k2OfKBMK,
-            byte[] keyKBMK) throws Exception {
-        // System.out.println("Data :\n" + Util.dumpHexString(data));
-        byte[] endblock = getEndblock(data, k1k2OfKBMK);
-        // Replace last 8 bytes of the data with the end block which has used the last 8
-        // bytes to and XOR'd with appropriate K1 or K2 key of KBMK. This replaced value
-        // will be fed into the TDEA encryption
-        System.arraycopy(endblock, 0, data, data.length - endblock.length, endblock.length);
-        // System.out.println("Endblock Changed Data :\n" + Util.dumpHexString(data));
-
-        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(keyKBMK);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
-
-        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-
-        byte[] result = cipher.doFinal(data);
-        // System.out.println("Final Data :\n" + Util.dumpHexString(result));
-        if (result.length > BLOCKSIZE) {
-            byte[] mac8byte = new byte[BLOCKSIZE];
-            System.arraycopy(result, result.length - BLOCKSIZE, mac8byte, 0, BLOCKSIZE);
-            result = mac8byte;
-        }
-        KeyblockGenerator.mac = result;
-        return result;
-
-    }
-
-    /**
-     * @param data
-     * @param macKey
-     * @return
-     *         A MAC, which is 32 bits (4 bytes) if the keyblock type "A" variant
-     *         method
-     * @throws NoSuchAlgorithmException
-     * @throws NoSuchPaddingException
-     * @throws InvalidKeyException
-     * @throws IllegalBlockSizeException
-     * @throws BadPaddingException
-     * @throws InvalidAlgorithmParameterException
-     */
-    public static byte[] generateMACForKeyblockTypeA(byte[] data, byte[] macKey)
-            throws Exception {
-
-        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
-
-        byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(macKey);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(tdesKey, CRYPT_ALGORITHM);
-
-        // PKCS5Padding just produces a bigger mac and the offset for partial just
-        // changes.
-        Cipher cipher = Cipher.getInstance(DESEDE_CBC_NO_PADDING);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
-        byte[] mac = cipher.doFinal(data);
-        // System.out.println("encryptedKeyBlock :" + ISOUtil.hexString(data));
-        // System.out.println("Full mac :" + ISOUtil.hexString(mac));
-        byte[] partialMac = new byte[4];
-        System.arraycopy(mac, mac.length - BLOCKSIZE, partialMac, 0, 4);// Extracting 4 bytes
-        // System.out.println("PartialMac\n" + ISOUtil.hexString(partialMac));
-        KeyblockGenerator.mac = partialMac;
-        return partialMac;
-
-    }
-
-    /**
-     * Check message length is a multiple of block size.
-     * If the mssage length mod blocksize is not 0 (has remainder) pad the message
-     * with bytes0x80 follwed by 0's till message length is a multiple of BLOCKSIZE
-     * copy the last block to the endblock and XOR it with K2
-     *
-     * Else message is a multiple of the blocksize,sopy the last block endblock and
-     * XOR it with K1
-     *
-     *
-     * @param message
-     * @param subKeyPairK1K2
-     * @return Endblock (padded or otherwise and XOR'd with either K1 or K2
-     * @throws Exception
-     */
-    protected static byte[] getEndblock(byte[] message, Pair<String, String> subKeyPairK1K2) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(message);
-        byte[] endblock = new byte[BLOCKSIZE];
-        if (message.length % BLOCKSIZE != 0) {
-            // Padding is a binary 1 followed by as many 0x0's required
-            int padLen = BLOCKSIZE - (message.length % BLOCKSIZE);
-            baos.write(0x80); // this is for the placing that first binary 1.
-            baos.write(new byte[padLen - 1]);// array initialized by default to 0x0's
-            byte[] source = baos.toByteArray();
-            System.arraycopy(source, source.length - BLOCKSIZE, endblock, 0, BLOCKSIZE);
-            // use K2 when not a divisible message
-            endblock = Util.xor(Util.hexStringToByteArray(subKeyPairK1K2.getValue1()), endblock);
+        if ((S.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            K1 = K1.xor(Bytes.parseHex(derivationConstantForKey1));
 
         }
-        else {
-            byte[] source = baos.toByteArray();
-            System.arraycopy(source, source.length - BLOCKSIZE, endblock, 0, BLOCKSIZE);
-            // use K1 when a divisible message
-            endblock = Util.xor(Util.hexStringToByteArray(subKeyPairK1K2.getValue0()), endblock);
+
+        Bytes K2 = K1.leftShift(1);
+
+        if ((K1.byteAt(0) & 0x80) == 0x80) {
+            // MSB most signinfican bit is 1
+            K2 = K2.xor(Bytes.parseHex(derivationConstantForKey2));
+
         }
-        return endblock;
-    }
 
-
-
-    public static Pair<String, String> generateK1K2FromAES_KBPKorKBMK(byte[] key) throws Exception {
-
-        // byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(key);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
-        // Step 1: the block cipher is applied to the block that consists entirely of
-        // ‘0’ bits.
-
-        byte[] result = cipher.doFinal(Util.hexStringToByteArray(_0000000000000000_0000000000000000));
-
-        result = Util.shiftLeft(result);
-        byte[] K1 = Util.xor(Util.hexStringToByteArray(_0000000000000000_0000000000000087), result);
-        String hexK1 = Util.bytesToHexString(K1);
-        K1 = Util.shiftLeft(K1);
-
-        byte[] K2 = Util.xor(Util.hexStringToByteArray(_0000000000000000_0000000000000087), K1);
-        String hexK2 = Util.bytesToHexString(K2);
-        return new Pair<>(hexK1, hexK2);
+        return new Pair<>(K1, K2);
 
     }
 
-    public static byte[] generateKeyPartForKeyblockTypeD(byte[] message, byte[] kPart, byte[] kbpk) throws Exception {
-        // TODO Auto-generated method stub
+    public static Pair<Bytes, Bytes> generate256AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
+            String derivationConstant1, String derivationConstant2) throws Exception {
 
-        byte[] xorResult = Util.xor(kPart, message);
-        System.out.println(Util.bytesToHexString(xorResult));
-        // Diagram in ANSI spec incorrect, shows 24 bytes but its the whole KBPK
+        Bytes result = K2.xor(Bytes.parseHex(derivationConstant1));
 
-        byte[] triple = KeyblockGenerator.convertToTripleLengthKey(kbpk);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(triple, "AES");
-        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] kbek1 = cipher.doFinal(result.array());
+        result = K2.xor(Bytes.parseHex(derivationConstant2));
+        byte[] kbek2 = cipher.doFinal(result.array());
 
-        return cipher.doFinal(xorResult);
+        return new Pair<>(Bytes.from(kbek1), Bytes.from(kbek2));
 
     }
 
+    public static Pair<Bytes, Bytes> generate128AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
+            String derivationConstant) throws Exception {
+
+        Bytes result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant)));
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] keyPart1 = cipher.doFinal(result.array());
+
+        // Since KBPK is 128, derived key must also be 128
+        return new Pair<>(Bytes.from(keyPart1),
+
+                          Bytes.allocate(0));
+
+    }
+
+    public static Triplet<Bytes, Bytes, Bytes> generate3TDEAK1K2K3ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K1,
+            String derivationConstant1, String derivationConstant2, String derivationConstant3) throws Exception {
+
+        Bytes result = K1.xor(Bytes.parseHex(derivationConstant1));
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] keyPart1 = cipher.doFinal(result.array());
+
+        result = K1.xor(Bytes.parseHex(derivationConstant2));
+
+        byte[] keyPartk2 = cipher.doFinal(result.array());
+
+        result = K1.xor(Bytes.parseHex(derivationConstant3));
+
+        byte[] keyPart3 = cipher.doFinal(result.array());
+
+        return new Triplet<>(Bytes.from(keyPart1),
+
+                             Bytes.from(keyPartk2), Bytes.from(keyPart3));
+
+    }
+
+    public static Pair<Bytes, Bytes> generateK1K2keysForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K1,
+            String derivationConstant1, String derivationConstant2) throws Exception {
+
+        Bytes result = K1.xor(Bytes.parseHex(derivationConstant1));
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] keyPart1 = cipher.doFinal(result.array());
+        result = K1.xor(Bytes.parseHex(derivationConstant2));
+        byte[] keyPart2 = cipher.doFinal(result.array());
+        return new Pair<>(Bytes.from(keyPart1), Bytes.from(keyPart2));
+
+    }
+
+    // public static void generate2TDEA_K1K2_KBMK(KeyBlock2TDEA kb) throws Exception
+    // {
+    // Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+    // Cipher cipher = kb.getCipherForK1K2TDEAGeneration();
+    // cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
+    // byte[] result = Util.xor(k1k2KBPK.getValue0()
+    // .array(),
+    // Util.hexStringToByteArray(kb.get2TDEADerivationConstantForK1GenerationOfKBMK1()));
+    // byte[] kbmk1 = cipher.doFinal(result);
+    // result = Util.xor(k1k2KBPK.getValue0()
+    // .array(),
+    // Util.hexStringToByteArray(kb.get2TDEADerivationConstantForK2GenerationOfKBMK2()));
+    // byte[] kbmk2 = cipher.doFinal(result);
+    // Pair<Bytes, Bytes> kbmkPair = new Pair<>(Bytes.from(kbmk1),
+    // Bytes.from(kbmk2));
+    // kb.setKeyPairK1K2KBMK(kbmkPair);
+    //
+    // }
 
 
-    public static byte[] generateMACForKeyblockTypeD(byte[] data, Pair<String, String> k1k2OfKBMK, byte[] keyKBMK)
-            throws Exception {
-        // System.out.println("Data :\n" + Util.dumpHexString(data));
-        byte[] endblock = getEndblock(data, k1k2OfKBMK);
-        // Replace last 8 bytes of the data with the end block which has used the last 8
-        // bytes to and XOR'd with appropriate K1 or K2 key of KBMK. This replaced value
-        // will be fed into the TDEA encryption
-        System.arraycopy(endblock, 0, data, data.length - BLOCKSIZE, BLOCKSIZE);
-        // System.out.println("Endblock Changed Data :\n" + Util.dumpHexString(data));
 
+    public static void deriveAllKeys(TR31KeyBlock kb)
+            throws IllegalBlockSizeException, BadPaddingException, Exception {
 
-        // byte[] tdesKey = KeyblockGenerator.convertToTripleLengthKey(keyKBMK);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(keyKBMK, "AES");
+        switch (kb.getHeader()
+                  .getKeyBlockType()) {
+            case C_TDEA_KEY_VARIANT_BINDING:// Intentional fallthrough. A and C are identical;
+            case A_KEY_VARIANT_BINDING:
 
-        // ANSI Spec is incorrect, shows usage of ECB instead of CBC
-        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec,
-                new IvParameterSpec(Util.hexStringToByteArray(_0000000000000000 + _0000000000000000)));
+                // To work with java crypto 128 bit double length keys are transformed to 192
+                // bits triple length keys by changing k1k2 to equivalent k1k2k1 hence to get
+                // the math right here we use on 128 bits of the key.
+                Bytes kbpkBytes = Bytes.from(kb.getKBPK()
+                                               .getEncoded())
+                                       .copy(0, 16);
+                Bytes kbmkBytes = Bytes.allocate(kbpkBytes.length());
+                Bytes kbekBytes = Bytes.allocate(kbpkBytes.length());
 
-        byte[] result = cipher.doFinal(data);
-        System.out.println("Final Data :\n" + Util.dumpHexString(result));
-        if (result.length > BLOCKSIZE) {
-            byte[] mac16byte = new byte[BLOCKSIZE];
-            System.arraycopy(result, result.length - BLOCKSIZE, mac16byte, 0, BLOCKSIZE);
-            result = mac16byte;
+                String E = Util.padleft("", kbpkBytes.length(), 'E');
+                String M = Util.padleft("", kbpkBytes.length(), 'M');
+
+                kbekBytes = kbpkBytes.xor(Bytes.from(E));
+                kbmkBytes = kbpkBytes.xor(Bytes.from(M));
+
+                // This is not needed but done to make code behavior look identical. There is no
+                // need for K1 K2 as KBEK is used as.
+                Pair<Bytes, Bytes> kbekPair = new Pair<>(kbekBytes.copy(0,
+                        kbekBytes.length() / 2), kbekBytes.copy(kbekBytes.length() / 2, kbekBytes.length() / 2));
+                Pair<Bytes, Bytes> kbmkPair = new Pair<>(kbmkBytes.copy(0,
+                        kbmkBytes.length() / 2), kbmkBytes.copy(kbmkBytes.length() / 2, kbmkBytes.length() / 2));
+
+                kb.setKeyPairK1K2KBEK(kbekPair);
+                kb.setKeyPairK1K2KBMK(kbmkPair);
+
+                break;
+            case B_TDEA_KEY_DERIVATION_BINDING:
+                String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfKey();
+                kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
+                        kb, new byte[8], derivationConstant, derivationConstant));
+
+                switch (kb.getRawKBPK()
+                          .length()
+                        * 8) {
+                    case 128: {// Double length TDEA key, derived KBEK and KBMK will each be 3 parts.
+                        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+                        String derivationConstant1 = kb.getDerivationConstant1For2TDEAEncryptionForKBEK();// for KBEK1
+                        String derivationConstant2 = kb.getDerivationConstant2For2TDEAEncryptionForKBEK();// For KBEK2
+                        kb.setKeyPairK1K2KBEK(generateK1K2keysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
+                                k1k2KBPK.getValue0(), derivationConstant1, derivationConstant2));
+                        derivationConstant1 = kb.getDerivationConstant1For2TDEAAuthenticationForKBMK();// for KBMK1
+                        derivationConstant2 = kb.getDerivationConstant2For2TDEAAuthenticationForKBMK();// For KBMK2
+                        kb.setKeyPairK1K2KBMK(generateK1K2keysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
+                                k1k2KBPK.getValue0(), derivationConstant1, derivationConstant2));
+                        // generate2TDEA_K1K2_KBMK(kb); refactored to above call
+                        break;
+                    }
+                    case 192: {// Triple length TDEA Key, derived KBEK and KBMK will each be 3 parts.
+                        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+                        String derivationConstant1 = kb.getDerivationConstant1For3TDEAEncryptionForKBEK();// for KBEK1
+                        String derivationConstant2 = kb.getDerivationConstant2For3TDEAEncryptionForKBEK();// for KBEK2
+                        String derivationConstant3 = kb.getDerivationConstant3For3TDEAEncryptionForKBEK();// for KBEK3
+                        kb.setKeyTripletK1K2K3KBEK(generate3TDEAK1K2K3ForKey(kb.getKBPK(),
+                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstant1,
+                                derivationConstant2, derivationConstant3));// KBEK based on constants passed in
+                        derivationConstant1 = kb.getDerivationConstant1For3TDEAAuthenticationForKBMK();// for KBMK1
+                        derivationConstant2 = kb.getDerivationConstant2For3TDEAAuthenticationForKBMK();// for KBMK2
+                        derivationConstant3 = kb.getDerivationConstant3For3TDEAAuthenticationForKBMK();// for KBMK3
+                        kb.setKeyTripletK1K2K3KBMK(generate3TDEAK1K2K3ForKey(kb.getKBPK(),
+                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstant1,
+                                derivationConstant2, derivationConstant3)); // KBMK based on constants pased in
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                kb.setKeyPairCMACKM1KM2KBMK(generateCMACK1K2KeysForKey(kb.getKBMK(),
+                        kb.getCipherForK1K2TDEAGeneration(), kb, new byte[8], derivationConstant, derivationConstant));
+                break;
+
+            case D_AES_KEY_DERIVATION:
+                generateCMACK1K2KeysForAES_KBPK(kb);
+
+                Cipher cipher = kb.getCipherForK1K2AESGeneration();
+                switch (kb.getRawKBPK()
+                          .length()
+                        * 8) {
+                    case 128: {
+                        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+                        String derivationConstant1 = kb.getDerivationConstant1For128AESEncryptionForKBEK();
+                        kb.setKeyPairK1K2KBEK(generate128AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1));// Generates KBEK 1 , KBEK2 not needed
+                        derivationConstant1 = kb.getDerivationConstant1For128AESAuthenticationForKBMK();
+                        kb.setKeyPairK1K2KBMK(generate128AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1));// Generates KBMK 1 , KBMK2 not needed
+
+                        break;
+                    }
+                    case 192: {
+                        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+                        String derivationConstant1 = kb.getDerivationConstant1For192AESEncryptionForKBEK();
+                        String derivationConstant2 = kb.getDerivationConstant2For192AESEncryptionForKBEK();
+                        kb.setKeyPairK1K2KBEK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1, derivationConstant2));// Generates KBEK 1 , KBEK2
+                        derivationConstant1 = kb.getDerivationConstant1For192AESAuthenticationForKBMK();
+                        derivationConstant2 = kb.getDerivationConstant2For192AESAuthenticationForKBMK();
+                        kb.setKeyPairK1K2KBMK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1, derivationConstant2));// Generates KBMK 1 , KBMK2
+                        break;
+                    }
+                    case 256: {
+                        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+                        String derivationConstant1 = kb.getDerivationConstant1For256AESEncryptionForKBEK();
+                        String derivationConstant2 = kb.getDerivationConstant2For256AESEncryptionForKBEK();
+                        kb.setKeyPairK1K2KBEK(generate256AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1, derivationConstant2));// Generates KBEK 1 , KBEK2
+                        derivationConstant1 = kb.getDerivationConstant1For256AESAuthenticationForKBMK();
+                        derivationConstant2 = kb.getDerivationConstant2For256AESAuthenticationForKBMK();
+                        kb.setKeyPairK1K2KBMK(generate256AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
+                                derivationConstant1, derivationConstant2));// Generates KBMK 1 , KBMK2
+                        break;
+                    }
+                    default:
+                        break;
+
+                }
+                generateCMACK1K2KeysForAES_KBMK(kb);
+                break;
+            default:
+                throw new Exception("Not Supported KeyBlock Type received : " + kb.getHeader()
+                                                                                  .getKeyBlockType());
+
         }
-        KeyblockGenerator.mac = result;
-        return result;
+
+    }
+
+
+
+    private static void generate128AES_K1K2_KBMK(TR31KeyBlock kb) throws Exception {
+        Cipher cipher = kb.getCipherForK1K2AESGeneration();
+        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
+        Bytes result = k1k2KBPK.getValue1()
+                               .xor(Bytes.parseHex(kb.getDerivationConstant1For256AESAuthenticationForKBMK()));
+
+        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
+        byte[] kbmk1 = cipher.doFinal(result.array());
+
+        Pair<Bytes, Bytes> kbekPair = new Pair<>(Bytes.from(kbmk1),
+
+                                                 Bytes.allocate(0));
+
+        kb.setKeyPairK1K2KBMK(kbekPair);
 
     }
 

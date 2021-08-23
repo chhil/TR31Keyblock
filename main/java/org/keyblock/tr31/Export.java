@@ -1,5 +1,7 @@
 package org.keyblock.tr31;
 
+import java.util.Optional;
+
 public enum Export {
 
                     E_EXPORTABLE_UNDER_TRUSTED_KEY("E"),
@@ -14,6 +16,18 @@ public enum Export {
 
     public String get() {
         return this.type;
+    }
+
+    public static Optional<Export> fromString(String exportString) {
+
+        // iterate over enums using for loop
+        for (Export s : Export.values()) {
+            if (exportString.equals(s.get())) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
+
     }
 
 }
