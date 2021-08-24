@@ -355,7 +355,7 @@ public class TR31KeyBlock {
         // Blocksize can be determined from the KBPK key size or the keyblock type. KBPK
         // may not be set before the clear key. Header is assumed to be set.
         if (header != null) {
-            if (header.getKeyBlockType() == KeyblockType.D_AES_KEY_DERIVATION) {
+            if (header.getKeyBlockType() == KeyblockType._D_AES_KEY_DERIVATION) {
                 BLOCKSIZE = 16;
             }
             else {
@@ -394,8 +394,11 @@ public class TR31KeyBlock {
     public void generateMAC() throws Exception {
 
         switch (header.getKeyBlockType()) {
-            case C_TDEA_KEY_VARIANT_BINDING:
-            case A_KEY_VARIANT_BINDING: {
+            case _0_THALES_DES:
+                //$FALL-THROUGH$
+            case _C_TDEA_KEY_VARIANT_BINDING:
+                //$FALL-THROUGH$
+            case _A_KEY_VARIANT_BINDING: {
                 BLOCKSIZE = 8;
                 setEncryptLengthEncodedPaddedKey();
 
@@ -424,7 +427,7 @@ public class TR31KeyBlock {
 
                 break;
             }
-            case B_TDEA_KEY_DERIVATION_BINDING: {
+            case _B_TDEA_KEY_DERIVATION_BINDING: {
                 BLOCKSIZE = 8;
                 generateLengthEncodedClearKey();
 
@@ -465,7 +468,7 @@ public class TR31KeyBlock {
                 break;
             }
 
-            case D_AES_KEY_DERIVATION: {
+            case _D_AES_KEY_DERIVATION: {
                 BLOCKSIZE = 16;
                 generateLengthEncodedClearKey();
                 Bytes lastBlock = null;
@@ -547,8 +550,11 @@ public class TR31KeyBlock {
     public void setEncryptLengthEncodedPaddedKey() throws Exception {
 
         switch (header.getKeyBlockType()) {
-            case C_TDEA_KEY_VARIANT_BINDING:
-            case A_KEY_VARIANT_BINDING: {
+            case _0_THALES_DES:
+                //$FALL-THROUGH$
+            case _C_TDEA_KEY_VARIANT_BINDING:
+                //$FALL-THROUGH$
+            case _A_KEY_VARIANT_BINDING: {
                 String iv = header.toString()
                                   .substring(0, 8);// part of header used for MAC
                 SecretKeySpec secretKeySpec = getKBEK();
@@ -558,7 +564,7 @@ public class TR31KeyBlock {
                 setEncryptedKey(result);
                 break;
             }
-            case B_TDEA_KEY_DERIVATION_BINDING: {
+            case _B_TDEA_KEY_DERIVATION_BINDING: {
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
                 SecretKeySpec secretKeySpec = getKBEK();
                 Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
@@ -568,7 +574,7 @@ public class TR31KeyBlock {
                 break;
             }
 
-            case D_AES_KEY_DERIVATION: {
+            case _D_AES_KEY_DERIVATION: {
 
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
                 SecretKeySpec secretKeySpec = getKBEK();
@@ -591,14 +597,16 @@ public class TR31KeyBlock {
         String algorithm = "";
         switch (header.getKeyBlockType()) {
             //
-            case A_KEY_VARIANT_BINDING:
+            case _0_THALES_DES:
                 //$FALL-THROUGH$
-            case B_TDEA_KEY_DERIVATION_BINDING:
+            case _A_KEY_VARIANT_BINDING:
+                //$FALL-THROUGH$
+            case _B_TDEA_KEY_DERIVATION_BINDING:
                 // $FALL-THROUGH$
-            case C_TDEA_KEY_VARIANT_BINDING:
+            case _C_TDEA_KEY_VARIANT_BINDING:
                 algorithm = "DESede";
                 break;
-            case D_AES_KEY_DERIVATION:
+            case _D_AES_KEY_DERIVATION:
                 algorithm = "AES";
                 break;
             default:
@@ -910,7 +918,7 @@ public class TR31KeyBlock {
         TR31KeyBlock kb = new TR31KeyBlock(header);
         kb.setKBPK(kbpk);
         CMAC.deriveAllKeys(kb);
-        if (header.getKeyBlockType() == KeyblockType.D_AES_KEY_DERIVATION) {
+        if (header.getKeyBlockType() == KeyblockType._D_AES_KEY_DERIVATION) {
             Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 32));
             kb.setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 32)));
             Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");

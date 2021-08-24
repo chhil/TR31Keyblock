@@ -181,24 +181,6 @@ public class CMAC {
 
     }
 
-    // public static void generate2TDEA_K1K2_KBMK(KeyBlock2TDEA kb) throws Exception
-    // {
-    // Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-    // Cipher cipher = kb.getCipherForK1K2TDEAGeneration();
-    // cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
-    // byte[] result = Util.xor(k1k2KBPK.getValue0()
-    // .array(),
-    // Util.hexStringToByteArray(kb.get2TDEADerivationConstantForK1GenerationOfKBMK1()));
-    // byte[] kbmk1 = cipher.doFinal(result);
-    // result = Util.xor(k1k2KBPK.getValue0()
-    // .array(),
-    // Util.hexStringToByteArray(kb.get2TDEADerivationConstantForK2GenerationOfKBMK2()));
-    // byte[] kbmk2 = cipher.doFinal(result);
-    // Pair<Bytes, Bytes> kbmkPair = new Pair<>(Bytes.from(kbmk1),
-    // Bytes.from(kbmk2));
-    // kb.setKeyPairK1K2KBMK(kbmkPair);
-    //
-    // }
 
 
 
@@ -207,15 +189,19 @@ public class CMAC {
 
         switch (kb.getHeader()
                   .getKeyBlockType()) {
-            case C_TDEA_KEY_VARIANT_BINDING:// Intentional fallthrough. A and C are identical;
-            case A_KEY_VARIANT_BINDING:
+            case _0_THALES_DES:
+                //$FALL-THROUGH$
+            case _C_TDEA_KEY_VARIANT_BINDING:// Intentional fallthrough. A and C are identical;
+                //$FALL-THROUGH$
+            case _A_KEY_VARIANT_BINDING:
 
                 // To work with java crypto 128 bit double length keys are transformed to 192
                 // bits triple length keys by changing k1k2 to equivalent k1k2k1 hence to get
                 // the math right here we use on 128 bits of the key.
+
                 Bytes kbpkBytes = Bytes.from(kb.getKBPK()
-                                               .getEncoded())
-                                       .copy(0, 16);
+                                               .getEncoded());
+                // .copy(0, 16);
                 Bytes kbmkBytes = Bytes.allocate(kbpkBytes.length());
                 Bytes kbekBytes = Bytes.allocate(kbpkBytes.length());
 
@@ -236,7 +222,7 @@ public class CMAC {
                 kb.setKeyPairK1K2KBMK(kbmkPair);
 
                 break;
-            case B_TDEA_KEY_DERIVATION_BINDING:
+            case _B_TDEA_KEY_DERIVATION_BINDING:
                 String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfKey();
                 kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
                         kb, new byte[8], derivationConstant, derivationConstant));
@@ -280,7 +266,7 @@ public class CMAC {
                         kb.getCipherForK1K2TDEAGeneration(), kb, new byte[8], derivationConstant, derivationConstant));
                 break;
 
-            case D_AES_KEY_DERIVATION:
+            case _D_AES_KEY_DERIVATION:
                 generateCMACK1K2KeysForAES_KBPK(kb);
 
                 Cipher cipher = kb.getCipherForK1K2AESGeneration();

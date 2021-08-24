@@ -8,18 +8,7 @@ import at.favre.lib.bytes.Bytes;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
-        testKeyBlockTypeA();
-        test2TDEAKeyBlockTypeB();
-        test2TDEAKeyBlockTypeC();
-        test3TDEAKeyBlockTypeB();
-        test256AESKeyBlockTypeD();
-        test128AESKeyBlockTypeD();
-        test192AESKeyBlockTypeD(); // Currently not working
 
-        decryptAndValidate();
-
-    }
 
     /**
      * <pre>
@@ -56,7 +45,7 @@ public class Main {
      * @throws Exception
      */
     public static void test192AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
         TR31KeyBlock kb = new TR31KeyBlock(header);
@@ -94,7 +83,7 @@ public class Main {
      * @throws Exception
      */
     public static void testKeyBlockTypeA() throws Exception {
-        Header header = new Header(KeyblockType.A_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._A_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
         TR31KeyBlock kb = new TR31KeyBlock(header);
@@ -104,6 +93,8 @@ public class Main {
 
         System.out.println(kb);
     }
+
+
 
     /**
      * <pre>
@@ -138,7 +129,7 @@ public class Main {
      */
     public static void test2TDEAKeyBlockTypeB() throws Exception {
         //
-        Header header = new Header(KeyblockType.B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -184,7 +175,7 @@ public class Main {
      * @throws Exception
      */
     public static void test3TDEAKeyBlockTypeB() throws Exception {
-        Header header = new Header(KeyblockType.B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -228,7 +219,7 @@ public class Main {
      * @throws Exception
      */
     public static void test2TDEAKeyBlockTypeC() throws Exception {
-        Header header = new Header(KeyblockType.C_TDEA_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._C_TDEA_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -272,7 +263,7 @@ public class Main {
      * @throws Exception
      */
     public static void test256AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -316,7 +307,7 @@ public class Main {
      * @throws Exception
      */
     public static void test128AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -375,4 +366,95 @@ public class Main {
 
     }
 
+    /**
+     * <pre>
+     *  Thales Key Block: Key block decode operation finished
+    ****************************************
+    KBPK:          89E88CF7931444F334BD7547FC3F380C
+    Thales Key block:  00072P0TE00E0000F3ABE56BDCD4AA26BE0A30C7D895A9755B5FCB994EDD8E7EE627CA46
+    ----------------------------------------
+    Thales Header:     00072P0TE00E0000
+    ----------------------------------------
+    Version Id:      0 - 3DES KBPK
+    Block Length:    0072
+    Key Usage:       P0 - PIN Encryption Key (Generic)
+    Algorithm:       T - Triple DES
+    Mode of Use:     E - Encrypt only
+    Key Version No.: 00
+    Exportability:   E - May only be exported in a trusted key block
+    Num. of Opt. blocks: 00
+    LMK ID:      00
+    Optional Blocks:
+    Thales Encrypted key:  F3ABE56BDCD4AA26BE0A30C7D895A9755B5FCB994EDD8E7E
+    Thales MAC:        E627CA46
+    ----------------------------------------
+    Plain Key:     F039121BEC83D26B169BDCD5B22AAF8F
+     * </pre>
+     *
+     * @throws Exception
+     */
+    public static void testKeyBlockTypeThales2Des0() throws Exception {
+        Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("89E88CF7931444F3 34BD7547FC3F380C");// Double length DES key
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    /**
+     * <pre>
+     *  Thales Key Block: Key block decode operation finished
+    ****************************************
+    KBPK:          D0A16D833DC225A7C29D01FDBFC4DAFE5725FB4CEFA7FEFD
+    Thales Key block:  00072P0TE00E0000735CEAAEEE913F29B69FEA2B747746DDC948F4614C3CEACCE717ED21
+    ----------------------------------------
+    Thales Header:     00072P0TE00E0000
+    ----------------------------------------
+    Version Id:      0 - 3DES KBPK
+    Block Length:    0072
+    Key Usage:       P0 - PIN Encryption Key (Generic)
+    Algorithm:       T - Triple DES
+    Mode of Use:     E - Encrypt only
+    Key Version No.: 00
+    Exportability:   E - May only be exported in a trusted key block
+    Num. of Opt. blocks: 00
+    LMK ID:      00
+    Optional Blocks:
+    Thales Encrypted key:  735CEAAEEE913F29B69FEA2B747746DDC948F4614C3CEACC
+    Thales MAC:        E717ED21
+    ----------------------------------------
+    Plain Key:     F039121BEC83D26B169BDCD5B22AAF8F
+     * </pre>
+     *
+     * @throws Exception
+     */
+    public static void testKeyBlockTypeThales3Des0() throws Exception {
+        Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("D0A16D833DC225A7C29D01FDBFC4DAFE5725FB4CEFA7FEFD");// Triple length DES key
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    public static void main(String[] args) throws Exception {
+        testKeyBlockTypeA();
+        // test2TDEAKeyBlockTypeB();
+        // test2TDEAKeyBlockTypeC();
+        // test3TDEAKeyBlockTypeB();
+        // test256AESKeyBlockTypeD();
+        // test128AESKeyBlockTypeD();
+        // test192AESKeyBlockTypeD();
+        // decryptAndValidate();
+        // testKeyBlockTypeThales2Des0();
+        // testKeyBlockTypeThales3Des0();
+
+    }
 }

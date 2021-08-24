@@ -6,10 +6,12 @@ public enum KeyblockType {
                           /**
                            * Use of A has been deprecated. Use C.
                            */
-                          A_KEY_VARIANT_BINDING("A"),
-                          B_TDEA_KEY_DERIVATION_BINDING("B"),
-                          C_TDEA_KEY_VARIANT_BINDING("C"),
-                          D_AES_KEY_DERIVATION("D");
+                          _A_KEY_VARIANT_BINDING("A"),
+                          _B_TDEA_KEY_DERIVATION_BINDING("B"),
+                          _C_TDEA_KEY_VARIANT_BINDING("C"),
+                          _D_AES_KEY_DERIVATION("D"),
+                          _0_THALES_DES("0"),
+                          _1_THALES_AES("1");
 
     private String type;
 
