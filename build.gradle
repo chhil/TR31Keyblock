@@ -20,6 +20,8 @@ dependencies {
 
 // https://mvnrepository.com/artifact/org.javatuples/javatuples
 implementation group: 'org.javatuples', name: 'javatuples', version: '1.2'
+// https://mvnrepository.com/artifact/at.favre.lib/bytes
+implementation group: 'at.favre.lib', name: 'bytes', version: '1.5.0'
 
 }
 
@@ -27,3 +29,5 @@ tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+sourceSets.main.java.srcDirs = ['src/main/java']
