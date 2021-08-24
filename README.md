@@ -17,6 +17,12 @@ This code implements TR31 keblock types
       1. 128 bits KBPK
       2. 192 bits KBPK
       3. 256 bits KBPK
+1.  0 : Thales DES 
+      1. 128 bits KBPK
+      2. 192 bits KBPK
+      3. 256 bits KBPK
+1.  1 : Thales AES (currently doesn't work).
+
 
 There is a validation implementation, when you get an encrypted keyblock and a KBPK and need to validate the TR31 keyblock received. It will generate all keys for the KBPK supplied,  extract the clear key from the TR31 keyblock, generate the MAC from the enrypted block and compare it to the one received.
 
