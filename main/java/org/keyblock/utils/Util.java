@@ -1,32 +1,7 @@
 package org.keyblock.utils;
 
-import java.nio.charset.StandardCharsets;
-
 public class Util {
 
-    public static byte[] hexStringToByteArray(String s) throws Exception {
-        int len = s.length();
-        if (s.length() % 2 != 0) {
-            throw new Exception("Hex string length needs to be even number. Length is " + s.length());
-        }
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
-        }
-        return data;
-    }
-
-    private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
-
-    public static String bytesToHexString(byte[] bytes) {
-        byte[] hexChars = new byte[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars, StandardCharsets.ISO_8859_1);
-    }
 
     /**
      * Source JPOS ISOUtil.padleft
@@ -153,20 +128,8 @@ public class Util {
     }
     /////// END Hexdump
 
-    // Logic taken from JPOS ISOUtil.xor
-    public static byte[] xor(byte[] op1, byte[] op2) {
-        byte[] result;
-        // Use the smallest array
-        if (op2.length > op1.length) {
-            result = new byte[op1.length];
-        }
-        else {
-            result = new byte[op2.length];
-        }
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (byte) (op1[i] ^ op2[i]);
-        }
-        return result;
 
-    }
+
+
+
 }
