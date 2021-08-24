@@ -36,8 +36,9 @@ EFTLABS tool used to be freely available but now its license has changed and you
 3. Implement functionality in your HSM emulator to generate TR31 keyblock. (either you don't have access to a HSM that can do this for you or your HSM doesn't have the licenses required from the vendor for this functionality.
 4. Useful for local internal testing. (Never use this in production.)
 
-### Note : Currently optional blocks are not supported.
-
+### Note : 
+Currently optional header blocks are not supported.
+Thale keyblock is work in progress. Currently Thales DES keyblock is supported. Thales AES keyblock is not working.
 
 Useful documents to refer to 
 
