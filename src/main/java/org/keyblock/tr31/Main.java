@@ -8,18 +8,7 @@ import at.favre.lib.bytes.Bytes;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
-        testKeyBlockTypeA();
-        test2TDEAKeyBlockTypeB();
-        test2TDEAKeyBlockTypeC();
-        test3TDEAKeyBlockTypeB();
-        test256AESKeyBlockTypeD();
-        test128AESKeyBlockTypeD();
-        test192AESKeyBlockTypeD(); // Currently not working
 
-        decryptAndValidate();
-
-    }
 
     /**
      * <pre>
@@ -361,6 +350,19 @@ public class Main {
 
     }
 
+    public static void decryptAndValidate2() throws Exception {
+        TR31KeyBlock kb = new TR31KeyBlock();
+        String keyBlock = "10096B0TN00E00001351EF8EA75D9E76A5DB95D862D0D1AA6E3A66C8D0C4A8D9409DBE5D8BBADE7E4343B579CE028363";
+        String kbpkString = "9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A";// this is the thales
+                                                                                               // test AES KBPK
+        if (kb.decryptAndValidateEncryptedKeyblock(keyBlock, kbpkString)) {
+            System.out.println("VALID");
+        }
+        else {
+            System.out.println("INVALID");
+        }
+
+    }
     public static void eftLabEncryptedBlockTest() throws Exception {
 
         TR31KeyBlock kb = new TR31KeyBlock();
@@ -375,4 +377,110 @@ public class Main {
 
     }
 
+    /**
+     * <pre>
+     *  Thales Key Block: Key block decode operation finished
+    ****************************************
+    KBPK:          89E88CF7931444F334BD7547FC3F380C
+    Thales Key block:  00072P0TE00E0000F3ABE56BDCD4AA26BE0A30C7D895A9755B5FCB994EDD8E7EE627CA46
+    ----------------------------------------
+    Thales Header:     00072P0TE00E0000
+    ----------------------------------------
+    Version Id:      0 - 3DES KBPK
+    Block Length:    0072
+    Key Usage:       P0 - PIN Encryption Key (Generic)
+    Algorithm:       T - Triple DES
+    Mode of Use:     E - Encrypt only
+    Key Version No.: 00
+    Exportability:   E - May only be exported in a trusted key block
+    Num. of Opt. blocks: 00
+    LMK ID:      00
+    Optional Blocks:
+    Thales Encrypted key:  F3ABE56BDCD4AA26BE0A30C7D895A9755B5FCB994EDD8E7E
+    Thales MAC:        E627CA46
+    ----------------------------------------
+    Plain Key:     F039121BEC83D26B169BDCD5B22AAF8F
+     * </pre>
+     *
+     * @throws Exception
+     */
+    public static void testKeyBlockTypeThales2Des0() throws Exception {
+        Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("89E88CF7931444F3 34BD7547FC3F380C");// Double length DES key
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    /**
+     * <pre>
+     *  Thales Key Block: Key block decode operation finished
+    ****************************************
+    KBPK:          D0A16D833DC225A7C29D01FDBFC4DAFE5725FB4CEFA7FEFD
+    Thales Key block:  00072P0TE00E0000735CEAAEEE913F29B69FEA2B747746DDC948F4614C3CEACCE717ED21
+    ----------------------------------------
+    Thales Header:     00072P0TE00E0000
+    ----------------------------------------
+    Version Id:      0 - 3DES KBPK
+    Block Length:    0072
+    Key Usage:       P0 - PIN Encryption Key (Generic)
+    Algorithm:       T - Triple DES
+    Mode of Use:     E - Encrypt only
+    Key Version No.: 00
+    Exportability:   E - May only be exported in a trusted key block
+    Num. of Opt. blocks: 00
+    LMK ID:      00
+    Optional Blocks:
+    Thales Encrypted key:  735CEAAEEE913F29B69FEA2B747746DDC948F4614C3CEACC
+    Thales MAC:        E717ED21
+    ----------------------------------------
+    Plain Key:     F039121BEC83D26B169BDCD5B22AAF8F
+     * </pre>
+     *
+     * @throws Exception
+     */
+    public static void testKeyBlockTypeThales3Des0() throws Exception {
+        Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("D0A16D833DC225A7C29D01FDBFC4DAFE5725FB4CEFA7FEFD");// Triple length DES key
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    public static void testKeyBlockTypeThales128AES1() throws Exception {
+        Header header = new Header(KeyblockType._1_THALES_AES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("FED02F85DF1989F76E4F15BC370764CE");// Triple length DES key
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    public static void main(String[] args) throws Exception {
+        // testKeyBlockTypeA();
+        // test2TDEAKeyBlockTypeB();
+        // test2TDEAKeyBlockTypeC();
+        // test3TDEAKeyBlockTypeB();
+        // test256AESKeyBlockTypeD();
+        // test128AESKeyBlockTypeD();
+        // test192AESKeyBlockTypeD();
+        // decryptAndValidate();
+        //
+        // testKeyBlockTypeThales2Des0();
+        // testKeyBlockTypeThales3Des0();
+        testKeyBlockTypeThales128AES1();// doesn't work
+        decryptAndValidate2();// doesnt work
+
+    }
 }
