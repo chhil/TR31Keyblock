@@ -100,13 +100,13 @@ public class TR31KeyBlockTest {
         assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F000000000000"),
                 kb.getLengthEncodedPaddedClearKey());
         assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F"), kb.getlengthEncodedClearKey());
-        assertEquals(Bytes.parseHex("C663C8FBDC5E1061"), kb.getKeyPairK1K2KBEK()
+        assertEquals(Bytes.parseHex("CCADC9B2D65101B671F83002"), kb.getKeyPairK1K2KBEK()
                                                            .getValue0());
-        assertEquals(Bytes.parseHex("12F7A014BDFC561D"), kb.getKeyPairK1K2KBEK()
+        assertEquals(Bytes.parseHex("B97A7D49CCADC9B2D65101B6"), kb.getKeyPairK1K2KBEK()
                                                            .getValue1());
-        assertEquals(Bytes.parseHex("E157450719CC9B51"), kb.getKeyPairK1K2KBMK()
+        assertEquals(Bytes.parseHex("C4A5C1BADE5909BE79F0380A"), kb.getKeyPairK1K2KBMK()
                                                            .getValue0());
-        assertEquals(Bytes.parseHex("72C77B811B76DD0C"), kb.getKeyPairK1K2KBMK()
+        assertEquals(Bytes.parseHex("B1727541C4A5C1BADE5909BE"), kb.getKeyPairK1K2KBMK()
                                                            .getValue1());
         assertEquals(null, kb.getKeyPairCMACKM1KM2KBMK());
         assertEquals(null, kb.getKeyPairCMACKM1KM2KBMK());
@@ -226,11 +226,11 @@ public class TR31KeyBlockTest {
         assertEquals(Bytes.parseHex("2657D720B25F298BA0FAAB0C43E3DCCE"), kb.getKeyPairK1K2KBEK()
                                                                            .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBEK()
-                                                                           .getValue1());
+                                          .getValue1());
         assertEquals(Bytes.parseHex("BAF9A76EFEF0FC7F594A85BFAF05978C"), kb.getKeyPairK1K2KBMK()
                                                                            .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBMK()
-                                                                           .getValue1());
+                                          .getValue1());
         assertEquals(Bytes.parseHex("26D35B08A0FF8E71E31F2FD53418A1B1"), kb.getKeyPairCMACKM1KM2KBMK()
                                                                            .getValue0());
         assertEquals(Bytes.parseHex("4DA6B61141FF1CE3C63E5FAA68314362"), kb.getKeyPairCMACKM1KM2KBMK()
@@ -306,9 +306,9 @@ public class TR31KeyBlockTest {
                 kb.getLengthEncodedPaddedClearKey());
         assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F"), kb.getlengthEncodedClearKey());
         assertEquals(Bytes.parseHex("CCADC9B2D65101B671F83002"), kb.getKeyPairK1K2KBEK()
-                                                                           .getValue0());
+                                                                   .getValue0());
         assertEquals(Bytes.parseHex("B97A7D49CCADC9B2D65101B6"), kb.getKeyPairK1K2KBEK()
-                                                           .getValue1());
+                                                                   .getValue1());
         assertEquals(Bytes.parseHex("C4A5C1BADE5909BE79F0380A"), kb.getKeyPairK1K2KBMK()
                                                                    .getValue0());
         assertEquals(Bytes.parseHex("B1727541C4A5C1BADE5909BE"), kb.getKeyPairK1K2KBMK()
@@ -360,52 +360,10 @@ public class TR31KeyBlockTest {
                             .encodeHex(true));
     }
 
-    /**
-     * <pre>
-     * KBPK: FED02F85DF1989F76E4F15BC370764CE
-     * Thales Key block:
-     * 10096P0TE00E000001309DFC752C7DBE53A3480510652D7B845AF4E211F72B502D9B32AF702A64EA459DED8BE95188D9
-     * ----------------------------------------
-     * Thales Header: 10096P0TE00E0000
-     * ----------------------------------------
-     * Version Id: 1 - AES KBPK
-     * Block Length: 0096
-     * Key Usage: P0 - PIN Encryption Key (Generic)
-     * Algorithm: T - Triple DES
-     * Mode of Use: E - Encrypt only
-     * Key Version No.: 00
-     * Exportability: E - May only be exported in a trusted key block
-     * Num. of Opt. blocks: 00
-     * LMK ID: 00
-     * Optional Blocks:
-     * Thales Encrypted key:
-     * 01309DFC752C7DBE53A3480510652D7B845AF4E211F72B502D9B32AF702A64EA
-     * Thales MAC: 459DED8BE95188D9
-     * ----------------------------------------
-     * Plain Key: F039121BEC83D26B169BDCD5B22AAF8F
-     * KCV: CB9DEA
-     *
-     * <pre>
-     *
-     * @throws Exception
-     */
-    @Disabled
-    @DisplayName("Thales AES 128 Keyblock Type 1")
-    void testKeyBlockTypeThales128AES1() throws Exception {
-        Header header = new Header(KeyblockType._1_THALES_AES, KeyUsage._P0_PIN_ENCRYPTION,
-                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
-                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
-        TR31KeyBlock kb = new TR31KeyBlock(header);
-        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
-        kb.setKBPK("FED02F85DF1989F76E4F15BC370764CE");// Triple length DES key
-        kb.generate();
-
-        System.out.println(kb);
-    }
 
     /**
      * Since AES 1 is not working, this test has got the key block from EFT LAB Sim
-     * and we try to decrypt it debug the issue.
+     * and we try to decrypt it and debug the issue.
      * Have fed in the same header, KBPK and clear key. The output from the EFT LAB
      * Sim is shown below. We feed in the KBPK and ENCRYPTED keyblock to determine
      * the parts of the keyblock
@@ -457,20 +415,19 @@ public class TR31KeyBlockTest {
         assertEquals(Bytes.parseHex("D102DC4312C4649AA966B0D10B56"), kb.getClearKeyPadding());
         assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F"), kb.getlengthEncodedClearKey());
         assertEquals(Bytes.parseHex("A3E44F5D04E47518F20D596FC433AC2B"), kb.getKeyPairK1K2KBEK()
-                                                                   .getValue0());
+                                                                           .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBEK()
-                                                                   .getValue1());
+                                          .getValue1());
         assertEquals(Bytes.parseHex("31FE334A0E1120D78C1C970D99E77530"), kb.getKeyPairK1K2KBMK()
-                                                                   .getValue0());
+                                                                           .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBMK()
-                                                                   .getValue1());
+                                          .getValue1());
         // The above pass implying we can get the Clear key using the KBEK.
         // The following WILL FAIL. Implying the MAC key generated is not correct or the
         // data used for MACing is not correct.
         // Currently don't have a Thales spec that tells me what is the correct way for
         // generating the MAC key and MACing data
         assertEquals(Bytes.parseHex("459DED8BE95188D9"), kb.getMessageMAC());
-
 
     }
 
