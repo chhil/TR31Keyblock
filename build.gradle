@@ -18,6 +18,8 @@ repositories {
 
 dependencies {
 
+    testImplementation(platform('org.junit:junit-bom:5.7.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
 // https://mvnrepository.com/artifact/org.javatuples/javatuples
 implementation group: 'org.javatuples', name: 'javatuples', version: '1.2'
 // https://mvnrepository.com/artifact/at.favre.lib/bytes

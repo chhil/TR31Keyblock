@@ -16,32 +16,6 @@ public class CMAC {
 
     private static byte[] dataToEncrypt;
 
-    public static void generateCMACK1K2KeysForAES_KBPK(TR31KeyBlock kb) throws Exception {
-        Cipher cipher = kb.getCipherForK1K2AESGeneration();
-        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
-
-        dataToEncrypt = new byte[16];
-
-        Bytes S = Bytes.from(cipher.doFinal(dataToEncrypt));
-
-        Bytes K1 = S.leftShift(1);
-        if ((S.byteAt(0) & 0x80) == 0x80) {
-            // MSB most signinfican bit is 1
-            K1 = K1.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
-
-        }
-
-        Bytes K2 = K1.leftShift(1);
-
-        if ((K1.byteAt(0) & 0x80) == 0x80) {
-            // MSB most signinfican bit is 1
-            K2 = K2.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
-
-        }
-
-        kb.setKeyPairCMACK1K2KBPK(new Pair<>(K1, K2));
-
-    }
 
     public static Pair<Bytes, Bytes> generate192AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
             String derivationConstant1, String derivationConstant2) throws Exception {
@@ -64,32 +38,6 @@ public class CMAC {
 
     }
 
-    public static void generateCMACK1K2KeysForAES_KBMK(TR31KeyBlock kb) throws Exception {
-        Cipher cipher = kb.getCipherForK1K2AESGeneration();
-        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBMK());
-
-        dataToEncrypt = new byte[16];
-
-        Bytes S = Bytes.from(cipher.doFinal(dataToEncrypt));
-
-        Bytes KM1 = S.leftShift(1);
-        if ((S.byteAt(0) & 0x80) == 0x80) {
-            // MSB most signinfican bit is 1
-            KM1 = KM1.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
-
-        }
-
-        Bytes KM2 = KM1.leftShift(1);
-
-        if ((KM1.byteAt(0) & 0x80) == 0x80) {
-            // MSB most signinfican bit is 1
-            KM2 = KM2.xor(Bytes.parseHex(kb.getDerivationConstantForK1K2GenerationOfAESKey()));
-
-        }
-
-        kb.setKeyPairCMACKM1KM2KBMK(new Pair<>(KM1, KM2));
-
-    }
 
     public static Pair<Bytes, Bytes> generateCMACK1K2KeysForKey(SecretKeySpec keySpec, Cipher cipher, TR31KeyBlock kb,
             byte[] intialDataToEncrypt, String derivationConstantForKey1, String derivationConstantForKey2)
@@ -125,11 +73,11 @@ public class CMAC {
         Bytes result = K2.xor(Bytes.parseHex(derivationConstant1));
 
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-        byte[] kbek1 = cipher.doFinal(result.array());
+        byte[] keyPart1 = cipher.doFinal(result.array());
         result = K2.xor(Bytes.parseHex(derivationConstant2));
-        byte[] kbek2 = cipher.doFinal(result.array());
+        byte[] keyPart2 = cipher.doFinal(result.array());
 
-        return new Pair<>(Bytes.from(kbek1), Bytes.from(kbek2));
+        return new Pair<>(Bytes.from(keyPart1), Bytes.from(keyPart2));
 
     }
 
@@ -223,36 +171,8 @@ public class CMAC {
 
                 break;
             }
-            case _1_THALES_AES:
 
-            {
-                Bytes kbpkBytes = Bytes.from(kb.getKBPK()
-                                               .getEncoded());
-
-                Bytes kbmkBytes = Bytes.allocate(kbpkBytes.length());
-                Bytes kbekBytes = Bytes.allocate(kbpkBytes.length());
-
-                String E = Util.padleft("", kbpkBytes.length(), 'E');
-                String M = Util.padleft("", kbpkBytes.length(), 'M');
-
-                kbekBytes = kbpkBytes.xor(Bytes.from(E));
-                kbmkBytes = kbpkBytes.xor(Bytes.from(M));
-
-                // This is not needed but done to make code behavior look identical. There is no
-                // need for K1 K2 as KBEK is used as.
-                Pair<Bytes, Bytes> kbekPair = new Pair<>(kbekBytes.copy(0,
-                        kbekBytes.length() / 2), kbekBytes.copy(kbekBytes.length() / 2, kbekBytes.length() / 2));
-                Pair<Bytes, Bytes> kbmkPair = new Pair<>(kbmkBytes.copy(0,
-                        kbmkBytes.length() / 2), kbmkBytes.copy(kbmkBytes.length() / 2, kbmkBytes.length() / 2));
-
-                kb.setKeyPairK1K2KBEK(kbekPair);
-                kb.setKeyPairK1K2KBMK(kbmkPair);
-                generateCMACK1K2KeysForAES_KBMK(kb);
-
-                break;
-            }
-
-            case _B_TDEA_KEY_DERIVATION_BINDING:
+            case _B_TDEA_KEY_DERIVATION_BINDING: {
                 String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfKey();
                 kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
                         kb, new byte[8], derivationConstant, derivationConstant));
@@ -295,9 +215,13 @@ public class CMAC {
                 kb.setKeyPairCMACKM1KM2KBMK(generateCMACK1K2KeysForKey(kb.getKBMK(),
                         kb.getCipherForK1K2TDEAGeneration(), kb, new byte[8], derivationConstant, derivationConstant));
                 break;
+            }
 
-            case _D_AES_KEY_DERIVATION:
-                generateCMACK1K2KeysForAES_KBPK(kb);
+            case _1_THALES_AES:
+            case _D_AES_KEY_DERIVATION: {
+                String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfAESKey();
+                kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2AESGeneration(),
+                        kb, new byte[16], derivationConstant, derivationConstant));
 
                 Cipher cipher = kb.getCipherForK1K2AESGeneration();
                 switch (kb.getRawKBPK()
@@ -342,8 +266,11 @@ public class CMAC {
                         break;
 
                 }
-                generateCMACK1K2KeysForAES_KBMK(kb);
+
+                kb.setKeyPairCMACKM1KM2KBMK(generateCMACK1K2KeysForKey(kb.getKBMK(), kb.getCipherForK1K2AESGeneration(),
+                        kb, new byte[16], derivationConstant, derivationConstant));
                 break;
+            }
             default:
                 throw new Exception("Not Supported KeyBlock Type received : " + kb.getHeader()
                                                                                   .getKeyBlockType());

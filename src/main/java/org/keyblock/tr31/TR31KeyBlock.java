@@ -40,7 +40,6 @@ public class TR31KeyBlock {
     private Bytes                        rawKBPK;
     private Triplet<Bytes, Bytes, Bytes> tripletK1K2K3KBMK;
     private Triplet<Bytes, Bytes, Bytes> tripletK1K2K3KBEK;
-    public boolean                       wasPadded = false;
     private Bytes                        clearKeyPadding;
 
     public TR31KeyBlock(Header header) {
@@ -343,7 +342,7 @@ public class TR31KeyBlock {
 
     public void setClearKey(Bytes clearKey) throws Exception {
         this.clearKey = clearKey;
-        generateLengthEncodedClearKey();
+        generateLengthEncodedPaddedClearKey();
 
     }
 
@@ -351,7 +350,7 @@ public class TR31KeyBlock {
         return lengthEncodedClearKey;
     }
 
-    private void generateLengthEncodedClearKey() throws Exception {
+    private void generateLengthEncodedPaddedClearKey() throws Exception {
         // Blocksize can be determined from the KBPK key size or the keyblock type. KBPK
         // may not be set before the clear key. Header is assumed to be set.
         if (header != null) {
@@ -387,12 +386,21 @@ public class TR31KeyBlock {
 
             new SecureRandom();
 
-            lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(arrayZeroes);
+            if (getClearKeyPadding() == null) {
+                // At times either for testing you want to set a known value for the padding or
+                // when you receive a keyblock that has its own padding, we want to use that
+                // with the key so that we can validate the MAC generated later.
+                lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(arrayZeroes);
+            }
+            else {
+                lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(getClearKeyPadding());
+            }
         }
 
     }
 
     public void generateMAC() throws Exception {
+
 
         switch (header.getKeyBlockType()) {
             case _0_THALES_DES:
@@ -415,14 +423,11 @@ public class TR31KeyBlock {
                 try {
                     Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
                     cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-
                     result = Bytes.from(cipher.doFinal(data.array()));
-
                     setMessageMAC(result.copy(result.length() - 8, 4));// uses 4 byte mac
                 }
                 catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
                         | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
 
@@ -430,145 +435,24 @@ public class TR31KeyBlock {
             }
             case _B_TDEA_KEY_DERIVATION_BINDING: {
                 BLOCKSIZE = 8;
-                generateLengthEncodedClearKey();
-
-                Bytes data = Bytes.from(getHeader().toString()
-                                                   .getBytes())
-                                  .append(getLengthEncodedPaddedClearKey());// doesn't take encrypted key
-                if (data.length() % BLOCKSIZE != 0) {
-                    int padLength = BLOCKSIZE - data.length() % BLOCKSIZE;
-                    data = data.append((byte) 0x80);
-                    data = data.append(new byte[padLength - 1]);
-
-                }
-
-                Bytes lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
-                lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue0());// XOR with KM1
-                // replace last block in padded data with the KM1 xor block
-                data = data.resize(data.length() - BLOCKSIZE, Mode.RESIZE_KEEP_FROM_ZERO_INDEX)
-                           .append(lastBlock);
-                byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-
-                SecretKeySpec secretKeySpec = getKBMK();
-                Bytes result = null;
-                try {
-                    Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
-                    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-
-                    result = Bytes.from(cipher.doFinal(data.array()));
-
-                    setMessageMAC(result.resize(8, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));
-                }
-                catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
-                        | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                setEncryptLengthEncodedPaddedKey();
-
+                String transformation = "DESede/CBC/NoPadding";
+                generateMAC(transformation, BLOCKSIZE, 8);
                 break;
             }
 
             case _1_THALES_AES: {
 
                 BLOCKSIZE = 16;
-                generateLengthEncodedClearKey();
-                Bytes lastBlock = null;
-                Bytes data = Bytes.from(getHeader().toString()
-                                                   .getBytes())
-                                  .append(getLengthEncodedPaddedClearKey());// doesn't take encrypted key
-                if (data.length() % BLOCKSIZE != 0) {
-                    int padLength = BLOCKSIZE - data.length() % BLOCKSIZE;
-                    data = data.append((byte) 0x80);
-                    data = data.append(new byte[padLength - 1]);
-                    wasPadded = true;
-                    lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
-                    lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue1());// XOR with KM2
-                }
-                else {
-                    /*
-                     * If you dont have optional headers, header is 16 and the key is already padded
-                     * to BLOCKSIZE so you will always end up on this part of the else.
-                     * That changes if you have optional blocks and changes the length to not be a
-                     * multiple of the blocksize.
-                     */
-                    lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
-                    lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue0());// XOR with KM1
-                }
-
-                // replace last block in padded data with the XOR'd last block
-                data = data.resize(data.length() - BLOCKSIZE, Mode.RESIZE_KEEP_FROM_ZERO_INDEX)
-                           .append(lastBlock);
-                byte[] iv = new byte[BLOCKSIZE];
-
-                SecretKeySpec secretKeySpec = getKBMK();
-                Bytes result = null;
-                try {
-                    Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-                    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-
-                    result = Bytes.from(cipher.doFinal(data.array()));
-
-                    setMessageMAC(result.resize(8, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost 16
-                }
-                catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
-                        | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                setEncryptLengthEncodedPaddedKey();
-
+                String transformation = "AES/CBC/NoPadding";
+                generateMAC(transformation, BLOCKSIZE, 8);
                 break;
 
             }
 
             case _D_AES_KEY_DERIVATION: {
                 BLOCKSIZE = 16;
-                generateLengthEncodedClearKey();
-                Bytes lastBlock = null;
-                Bytes data = Bytes.from(getHeader().toString()
-                                                   .getBytes())
-                                  .append(getLengthEncodedPaddedClearKey());// doesn't take encrypted key
-                if (data.length() % BLOCKSIZE != 0) {
-                    int padLength = BLOCKSIZE - data.length() % BLOCKSIZE;
-                    data = data.append((byte) 0x80);
-                    data = data.append(new byte[padLength - 1]);
-                    wasPadded = true;
-                    lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
-                    lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue1());// XOR with KM2
-                }
-                else {
-                    /*
-                     * If you dont have optional headers, header is 16 and the key is already padded
-                     * to BLOCKSIZE so you will always end up on this part of the else.
-                     * That changes if you have optional blocks and changes the length to not be a
-                     * multiple of the blocksize.
-                     */
-                    lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
-                    lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue0());// XOR with KM1
-                }
-
-                // replace last block in padded data with the XOR'd last block
-                data = data.resize(data.length() - BLOCKSIZE, Mode.RESIZE_KEEP_FROM_ZERO_INDEX)
-                           .append(lastBlock);
-                byte[] iv = new byte[BLOCKSIZE];
-
-                SecretKeySpec secretKeySpec = getKBMK();
-                Bytes result = null;
-                try {
-                    Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-                    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-
-                    result = Bytes.from(cipher.doFinal(data.array()));
-
-                    setMessageMAC(result.resize(16, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost 16
-                }
-                catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
-                        | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                setEncryptLengthEncodedPaddedKey();
+                String transformation = "AES/CBC/NoPadding";
+                generateMAC(transformation, BLOCKSIZE, 16);
 
                 break;
 
@@ -578,6 +462,55 @@ public class TR31KeyBlock {
 
         }
 
+    }
+
+    protected void generateMAC(String transformation, int blocksize, int macSize) throws Exception {
+        byte[] iv = new byte[blocksize];
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        generateLengthEncodedPaddedClearKey();
+        Bytes lastBlock = null;
+        Bytes data = Bytes.from(getHeader().toString()
+                                           .getBytes())
+                          .append(getLengthEncodedPaddedClearKey());// doesn't take encrypted key
+        if (data.length() % BLOCKSIZE != 0) {
+            int padLength = BLOCKSIZE - data.length() % BLOCKSIZE;
+            data = data.append((byte) 0x80);
+            data = data.append(new byte[padLength - 1]);
+            lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
+            lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue1());// XOR with KM2
+        }
+        else {
+            /*
+             * If you dont have optional headers, header is 16 and the key is already padded
+             * to BLOCKSIZE so you will always end up on this part of the else.
+             * That changes if you have optional blocks and changes the length to not be a
+             * multiple of the blocksize.
+             */
+            lastBlock = data.copy(data.length() - BLOCKSIZE, BLOCKSIZE);
+            lastBlock = lastBlock.xor(getKeyPairCMACKM1KM2KBMK().getValue0());// XOR with KM1
+        }
+
+        // replace last block in padded data with the XOR'd last block
+        data = data.resize(data.length() - BLOCKSIZE, Mode.RESIZE_KEEP_FROM_ZERO_INDEX)
+                   .append(lastBlock);
+
+        SecretKeySpec secretKeySpec = getKBMK();
+        Bytes result = null;
+        try {
+            Cipher cipher = Cipher.getInstance(transformation);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
+
+            result = Bytes.from(cipher.doFinal(data.array()));
+            System.out.println(result.encodeHex(true));
+
+            setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost blocksize [16 or 8]
+        }
+        catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
+                | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
+            e.printStackTrace();
+        }
+        setEncryptLengthEncodedPaddedKey();
     }
 
     public void setMessageMAC(Bytes result) {
@@ -609,46 +542,33 @@ public class TR31KeyBlock {
             case _C_TDEA_KEY_VARIANT_BINDING:
                 //$FALL-THROUGH$
             case _A_KEY_VARIANT_BINDING: {
+                String transformation = "DESede/CBC/NoPadding";
                 String iv = header.toString()
                                   .substring(0, 8);// part of header used for MAC
-                SecretKeySpec secretKeySpec = getKBEK();
-                Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv.getBytes()));
-                Bytes result = Bytes.from(cipher.doFinal(getLengthEncodedPaddedClearKey().array()));
-                setEncryptedKey(result);
+                setEncryptLengthEncodedPaddedKey(transformation, Bytes.from(iv));
                 break;
             }
             case _B_TDEA_KEY_DERIVATION_BINDING: {
+                String transformation = "DESede/CBC/NoPadding";
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
-                SecretKeySpec secretKeySpec = getKBEK();
-                Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv.array()));
-                Bytes result = Bytes.from(cipher.doFinal(getLengthEncodedPaddedClearKey().array()));
-                setEncryptedKey(result);
+                setEncryptLengthEncodedPaddedKey(transformation, iv);
                 break;
             }
 
             case _1_THALES_AES: {
+                String transformation = "AES/CBC/NoPadding";
                 String iv = header.toString()
                                   .substring(0, 16);
-                SecretKeySpec secretKeySpec = getKBEK();
-                Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv.getBytes()));
-                Bytes result = Bytes.from(cipher.doFinal(getLengthEncodedPaddedClearKey().array()));
-                setEncryptedKey(result);
+                setEncryptLengthEncodedPaddedKey(transformation, Bytes.from(iv));
                 break;
             }
 
             case _D_AES_KEY_DERIVATION: {
-                {
+                String transformation = "AES/CBC/NoPadding";
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
-                SecretKeySpec secretKeySpec = getKBEK();
-                Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv.array()));
-                Bytes result = Bytes.from(cipher.doFinal(getLengthEncodedPaddedClearKey().array()));
-                setEncryptedKey(result);
+                setEncryptLengthEncodedPaddedKey(transformation, iv);
                 break;
-            }
+
 
             }
             default:
@@ -656,6 +576,16 @@ public class TR31KeyBlock {
 
         }
 
+    }
+
+    protected void setEncryptLengthEncodedPaddedKey(String transformation, Bytes iv)
+            throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException,
+            InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
+        SecretKeySpec secretKeySpec = getKBEK();
+        Cipher cipher = Cipher.getInstance(transformation);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(iv.array()));
+        Bytes result = Bytes.from(cipher.doFinal(getLengthEncodedPaddedClearKey().array()));
+        setEncryptedKey(result);
     }
 
     public void setKBPK(String hexKBPK) {
@@ -983,124 +913,122 @@ public class TR31KeyBlock {
         boolean valid = false;
         // Currently not handling optional headers so we know header is 16 wide
         header = new Header(keyBlock.substring(0, 16));
-        TR31KeyBlock kb = new TR31KeyBlock(header);
-        kb.setKBPK(kbpk);
-        CMAC.deriveAllKeys(kb);
+        setKBPK(kbpk);
+        CMAC.deriveAllKeys(this);
         if (header.getKeyBlockType() == KeyblockType._D_AES_KEY_DERIVATION) {
-            valid = validateKeyblockTypeAES_D(keyBlock, kb);
+            valid = validateKeyblockTypeAES_D(keyBlock);
 
         }
         if (header.getKeyBlockType() == KeyblockType._1_THALES_AES) {
-            valid = validateKeyblockTypeThalesAES_1(keyBlock, kb);
+            valid = validateKeyblockTypeThalesAES_1(keyBlock);
 
         }
         return valid;
 
     }
 
-    private boolean validateKeyblockTypeThalesAES_1(String keyBlock, TR31KeyBlock kb) throws Exception {
+    private boolean validateKeyblockTypeThalesAES_1(String keyBlock) throws Exception {
         boolean valid;
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 16));
-        tempMAC = Bytes.parseHex("4E7921915A1438B8");
+
         System.out.println("MAC :" + tempMAC);
-        String headerString = "10096P0TE00E0000".substring(0, 8);
+        String headerString = keyBlock.substring(0, 16);
         System.out.println("header :" + headerString);
-        kb.setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 16)));
-        System.out.println("Encrypted Key : " + kb.getEncryptedKey()
+        setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 16)));
+        System.out.println("Encrypted Key : " + getEncryptedKey()
                                                   .encodeHex(true));
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-        // SecretKeySpec tempKeySpec = new SecretKeySpec(kb.getKBEK()
-        // .getEncoded(),
-        // "DESede");
-        // tempKeySpec = convertToTripleLengthKey(tempKeySpec);
-        Bytes iv = Bytes.from(headerString)
-                        .append(tempMAC);
-        // iv = Bytes.parseHex("00000000000000000000000000000000");
-        // iv = Bytes.from(keyBlock.substring(0, 16));
+        Bytes iv = Bytes.from(headerString);
         System.out.println("IV : " + iv.encodeHex(true));
         IvParameterSpec ivSpec = new IvParameterSpec(iv.array());
-        cipher.init(Cipher.DECRYPT_MODE, kb.getKBEK(), ivSpec);
-        Bytes result = Bytes.from(cipher.doFinal(kb.encryptedKey.array()));
+        cipher.init(Cipher.DECRYPT_MODE, getKBEK(), ivSpec);
+        Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
         System.out.println("Decrypted Key :" + result.encodeHex(true));
         int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
                                                    .encodeHex(true),
                 16);
 
-        kb.setClearKey(result.copy(2, keyBitsLength / 8));
-        kb.setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
-        kb.generateMAC();
+        setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));// needs to
+                                                                                                             // be done
+                                                                                                             // before
+                                                                                                             // seting
+                                                                                                             // clear
+                                                                                                             // key
+        setClearKey(result.copy(2, keyBitsLength / 8));
+
+        generateMAC();
 
         System.out.println("Encrypted Keyblock :" + keyBlock);
         System.out.println("From Encrypted Keyblock - Header :" + header);
 
-        System.out.println("From Encrypted Keyblock - Encrypted key :" + kb.getEncryptedKey()
+        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey()
                                                                            .encodeHex(true));
 
         System.out.println("From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + kb.getClearKey()
+        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey()
                                                                       .encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + kb.getClearKeyPadding()
+        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding()
                                                                               .encodeHex(true));
-        if (!kb.getMessageMAC()
+        if (!getMessageMAC()
                .equals(tempMAC)) {
 
             System.out.println(
                     String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), kb.getMessageMAC()
+                            tempMAC.encodeHex(true), getMessageMAC()
                                                        .encodeHex(true)));
             valid = false;
         }
         else {
             System.out.println(String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                    tempMAC.encodeHex(true), kb.getMessageMAC()
+                    tempMAC.encodeHex(true), getMessageMAC()
                                                .encodeHex(true)));
             valid = true;
         }
         return valid;
     }
 
-    protected boolean validateKeyblockTypeAES_D(String keyBlock, TR31KeyBlock kb)
+    protected boolean validateKeyblockTypeAES_D(String keyBlock)
             throws Exception {
         boolean valid;
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 32));
-        kb.setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 32)));
+        setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 32)));
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, kb.getKBEK(), new IvParameterSpec(tempMAC.array()));
-        Bytes result = Bytes.from(cipher.doFinal(kb.encryptedKey.array()));
+        cipher.init(Cipher.DECRYPT_MODE, getKBEK(), new IvParameterSpec(tempMAC.array()));
+        Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
 
         int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
                                                    .encodeHex(true),
                 16);
 
-        kb.setClearKey(result.copy(2, keyBitsLength / 8));
-        kb.setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
-        kb.generateMAC();
+        setClearKey(result.copy(2, keyBitsLength / 8));
+        setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
+        generateMAC();
 
         System.out.println("Encrypted Keyblock :" + keyBlock);
         System.out.println("From Encrypted Keyblock - Header :" + header);
 
-        System.out.println("From Encrypted Keyblock - Encrypted key :" + kb.getEncryptedKey()
+        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey()
                                                                            .encodeHex(true));
 
         System.out.println(
                 "From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + kb.getClearKey()
+        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey()
                                                                       .encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + kb.getClearKeyPadding()
+        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding()
                                                                               .encodeHex(true));
-        if (!kb.getMessageMAC()
+        if (!getMessageMAC()
                .equals(tempMAC)) {
 
             System.out.println(
                     String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), kb.getMessageMAC()
+                            tempMAC.encodeHex(true), getMessageMAC()
                                                        .encodeHex(true)));
             valid = false;
         }
         else {
             System.out.println(
                     String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                            tempMAC.encodeHex(true), kb.getMessageMAC()
+                            tempMAC.encodeHex(true), getMessageMAC()
                                                        .encodeHex(true)));
             valid = true;
         }

@@ -354,8 +354,9 @@ public class Main {
 
     public static void decryptAndValidate2() throws Exception {
         TR31KeyBlock kb = new TR31KeyBlock();
-        String keyBlock = "10096P0TE00E000001309DFC752C7DBE53A3480510652D7B9CAEEC70F7F226C3CD5C0E91C0B311B14E7921915A1438B8";
-        String kbpkString = "FED02F85DF1989F76E4F15BC370764CE";
+        String keyBlock = "10096B0TN00E00001351EF8EA75D9E76A5DB95D862D0D1AA6E3A66C8D0C4A8D9409DBE5D8BBADE7E4343B579CE028363";
+        String kbpkString = "9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A";// this is the thales
+                                                                                               // test AES KBPK
         if (kb.decryptAndValidateEncryptedKeyblock(keyBlock, kbpkString)) {
             System.out.println("VALID");
         }
@@ -469,19 +470,19 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        testKeyBlockTypeA();
-        test2TDEAKeyBlockTypeB();
-        test2TDEAKeyBlockTypeC();
-        test3TDEAKeyBlockTypeB();
-        test256AESKeyBlockTypeD();
-        test128AESKeyBlockTypeD();
-        test192AESKeyBlockTypeD();
-        decryptAndValidate();
-        
-        testKeyBlockTypeThales2Des0();
-        testKeyBlockTypeThales3Des0();
-        testKeyBlockTypeThales128AES1();//doesn't work
-        decryptAndValidate2();//doesnt work
+        // testKeyBlockTypeA();
+        // test2TDEAKeyBlockTypeB();
+        // test2TDEAKeyBlockTypeC();
+        // test3TDEAKeyBlockTypeB();
+        // test256AESKeyBlockTypeD();
+        // test128AESKeyBlockTypeD();
+        // test192AESKeyBlockTypeD();
+        // decryptAndValidate();
+        //
+        // testKeyBlockTypeThales2Des0();
+        // testKeyBlockTypeThales3Des0();
+        testKeyBlockTypeThales128AES1();// doesn't work
+        decryptAndValidate2();// doesnt work
 
     }
 }
