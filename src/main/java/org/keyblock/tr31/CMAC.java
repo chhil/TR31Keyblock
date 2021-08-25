@@ -40,7 +40,7 @@ public class CMAC {
 
 
     public static Pair<Bytes, Bytes> generateCMACK1K2KeysForKey(SecretKeySpec keySpec, Cipher cipher, TR31KeyBlock kb,
-            byte[] intialDataToEncrypt, String derivationConstantForKey1, String derivationConstantForKey2)
+            byte[] intialDataToEncrypt, String derivationConstantForKey)
             throws Exception {
 
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
@@ -51,7 +51,7 @@ public class CMAC {
 
         if ((S.byteAt(0) & 0x80) == 0x80) {
             // MSB most signinfican bit is 1
-            K1 = K1.xor(Bytes.parseHex(derivationConstantForKey1));
+            K1 = K1.xor(Bytes.parseHex(derivationConstantForKey));
 
         }
 
@@ -59,7 +59,7 @@ public class CMAC {
 
         if ((K1.byteAt(0) & 0x80) == 0x80) {
             // MSB most signinfican bit is 1
-            K2 = K2.xor(Bytes.parseHex(derivationConstantForKey2));
+            K2 = K2.xor(Bytes.parseHex(derivationConstantForKey));
 
         }
 
@@ -84,10 +84,9 @@ public class CMAC {
     public static Pair<Bytes, Bytes> generate128AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
             String derivationConstant) throws Exception {
 
-        Bytes result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant)));
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        Bytes result = K2.xor(Bytes.parseHex(derivationConstant));
         byte[] keyPart1 = cipher.doFinal(result.array());
-
         // Since KBPK is 128, derived key must also be 128
         return new Pair<>(Bytes.from(keyPart1),
 
@@ -175,7 +174,7 @@ public class CMAC {
             case _B_TDEA_KEY_DERIVATION_BINDING: {
                 String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfKey();
                 kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
-                        kb, new byte[8], derivationConstant, derivationConstant));
+                        kb, new byte[8], derivationConstant));
 
                 switch (kb.getRawKBPK()
                           .length()
@@ -213,15 +212,19 @@ public class CMAC {
                         break;
                 }
                 kb.setKeyPairCMACKM1KM2KBMK(generateCMACK1K2KeysForKey(kb.getKBMK(),
-                        kb.getCipherForK1K2TDEAGeneration(), kb, new byte[8], derivationConstant, derivationConstant));
+                        kb.getCipherForK1K2TDEAGeneration(), kb, new byte[8], derivationConstant));
                 break;
             }
 
-            case _1_THALES_AES:
+            case _1_THALES_AES:// Assumption is that Thales Keyblock type 1 and TR31 Keyblock type D are
+                               // identical. The CMAC K1 K2 for KBPK seem alright as the KBEK pair derived from
+                               // it encrypts the key correctly. However the K1K2KBMK or the CMACKM1KM2KBMK
+                               // obtained from the K1K2KBMK is incorrect as the MAC value generatd is
+                               // incorrect.
             case _D_AES_KEY_DERIVATION: {
                 String derivationConstant = kb.getDerivationConstantForK1K2GenerationOfAESKey();
                 kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), kb.getCipherForK1K2AESGeneration(),
-                        kb, new byte[16], derivationConstant, derivationConstant));
+                        kb, new byte[16], derivationConstant));
 
                 Cipher cipher = kb.getCipherForK1K2AESGeneration();
                 switch (kb.getRawKBPK()
@@ -268,7 +271,7 @@ public class CMAC {
                 }
 
                 kb.setKeyPairCMACKM1KM2KBMK(generateCMACK1K2KeysForKey(kb.getKBMK(), kb.getCipherForK1K2AESGeneration(),
-                        kb, new byte[16], derivationConstant, derivationConstant));
+                        kb, new byte[16], derivationConstant));
                 break;
             }
             default:

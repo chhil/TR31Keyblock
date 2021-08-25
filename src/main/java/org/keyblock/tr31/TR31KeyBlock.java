@@ -263,21 +263,7 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
     }
 
-    public final String get2TDEADerivationConstantForK1GenerationOfKBMK1() {
-        // 01 00 01 00 00 00 00 80
-        //
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
-                + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
-    }
 
-    public final String get2TDEADerivationConstantForK2GenerationOfKBMK2() {
-        // 02 00 01 00 00 00 00 80
-        //
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
-                + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
-    }
 
     public String getDerivationConstant2For3TDEAAuthenticationForKBMK() {
 
@@ -798,24 +784,6 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
     }
 
-    /**
-     * @return
-     *         A padded constant of 32 ASCII HEX (16 bytes), as hats the AES block
-     *         size. Constant is derived from key counter / algorithm / key size
-     */
-    public String get2AES256DerivationConstantForK1GenerationOfKBEK2() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
-                + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
-    }
-
-    public String get2AES128DerivationConstantForK2GenerationOfKBEK2() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
-                + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
-    }
 
     public String getDerivationConstant1For128AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
@@ -824,6 +792,12 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
     }
 
+    public String getDerivationConstant2For128AESEncryptionForKBEK() {
+        String padding = "8000000000000000"; // 16 wide
+        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
+                + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
+    }
     public String getDerivationConstant1For128AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
         return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
@@ -873,26 +847,8 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
     }
 
-    public String get2AES128DerivationConstantForK2GenerationOfKBMK2() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
-                + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
-    }
 
-    public String get1AES128DerivationConstantForK1GenerationOfKBMK1() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
-                + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
-    }
 
-    public String get2AES256DerivationConstantForK1GenerationOfKBMK2() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
-                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
-                + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
-    }
 
     /**
      * Takes in an Enrypted keyblock and KBPK.
@@ -931,11 +887,11 @@ public class TR31KeyBlock {
         boolean valid;
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 16));
 
-        System.out.println("MAC :" + tempMAC);
+        System.out.println("From Encrypted Keyblock - MAC :" + tempMAC);
         String headerString = keyBlock.substring(0, 16);
-        System.out.println("header :" + headerString);
+        System.out.println("From Encrypted Keyblock - header :" + headerString);
         setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 16)));
-        System.out.println("Encrypted Key : " + getEncryptedKey()
+        System.out.println("From Encrypted Keyblock - Encrypted Key : " + getEncryptedKey()
                                                   .encodeHex(true));
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
         Bytes iv = Bytes.from(headerString);
@@ -943,7 +899,7 @@ public class TR31KeyBlock {
         IvParameterSpec ivSpec = new IvParameterSpec(iv.array());
         cipher.init(Cipher.DECRYPT_MODE, getKBEK(), ivSpec);
         Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
-        System.out.println("Decrypted Key :" + result.encodeHex(true));
+        System.out.println("Code Decrypted Key :" + result.encodeHex(true));
         int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
                                                    .encodeHex(true),
                 16);

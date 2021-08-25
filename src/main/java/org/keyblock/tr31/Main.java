@@ -350,19 +350,7 @@ public class Main {
 
     }
 
-    public static void decryptAndValidate2() throws Exception {
-        TR31KeyBlock kb = new TR31KeyBlock();
-        String keyBlock = "10096B0TN00E00001351EF8EA75D9E76A5DB95D862D0D1AA6E3A66C8D0C4A8D9409DBE5D8BBADE7E4343B579CE028363";
-        String kbpkString = "9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A";// this is the thales
-                                                                                               // test AES KBPK
-        if (kb.decryptAndValidateEncryptedKeyblock(keyBlock, kbpkString)) {
-            System.out.println("VALID");
-        }
-        else {
-            System.out.println("INVALID");
-        }
 
-    }
     public static void eftLabEncryptedBlockTest() throws Exception {
 
         TR31KeyBlock kb = new TR31KeyBlock();
@@ -467,20 +455,51 @@ public class Main {
         System.out.println(kb);
     }
 
+    public static void testKeyBlockTypeThales256AES1() throws Exception {
+        Header header = new Header(KeyblockType._1_THALES_AES, KeyUsage._P0_PIN_ENCRYPTION,
+                                   Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                                   KeyUseFor.E_ENCRYPT_ONLY, "00");
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
+        kb.setKBPK("9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A");// AES 256 bit /32 bytes
+        kb.generate();
+
+        System.out.println(kb);
+    }
+
+    public static void decryptAndValidateAES256KBPKeyBlockType1() throws Exception {
+        TR31KeyBlock kb = new TR31KeyBlock();
+        String keyBlock = "10096P0TE00E0000CF29A901B5B5DA7028693D4BE058A7B366D3CD2F5862D94E97BCD6D9F28B414A377052CE7A04D821";
+        String kbpkString = "9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A";// this is the thales
+                                                                                               // test AES KBPK
+        if (kb.decryptAndValidateEncryptedKeyblock(keyBlock, kbpkString)) {
+            System.out.println("VALID");
+        }
+        else {
+            System.out.println("INVALID");
+        }
+
+    }
     public static void main(String[] args) throws Exception {
-        // testKeyBlockTypeA();
-        // test2TDEAKeyBlockTypeB();
-        // test2TDEAKeyBlockTypeC();
-        // test3TDEAKeyBlockTypeB();
-        // test256AESKeyBlockTypeD();
-        // test128AESKeyBlockTypeD();
-        // test192AESKeyBlockTypeD();
-        // decryptAndValidate();
-        //
-        // testKeyBlockTypeThales2Des0();
-        // testKeyBlockTypeThales3Des0();
+        testKeyBlockTypeA();
+        test2TDEAKeyBlockTypeB();
+        test2TDEAKeyBlockTypeC();
+        test3TDEAKeyBlockTypeB();
+        test256AESKeyBlockTypeD();
+        test128AESKeyBlockTypeD();
+        test192AESKeyBlockTypeD();
+        decryptAndValidate();
+        testKeyBlockTypeThales2Des0();
+        testKeyBlockTypeThales3Des0();
+        // The following (All using AES keyblock 1) don't generate the correct MAC.
+        // Using the eft lab to decode the keyblock shows a mac mismatch error.
+        // Possibility of Generating the KMBK incorrectly or the CMAC for the KMBK
+        // incorrectly. Don't have access to any specification that lists how it is
+        // calculated. Currently its using the TR31 Keyblock Type D code equivalent.
         testKeyBlockTypeThales128AES1();// doesn't work
-        decryptAndValidate2();// doesnt work
+        testKeyBlockTypeThales256AES1();// doesn't work, the mac is incorrect when tested with EFT Labs sim
+        // decryptAndValidateAES256KBPKeyBlockType1();
+        //
 
     }
 }
