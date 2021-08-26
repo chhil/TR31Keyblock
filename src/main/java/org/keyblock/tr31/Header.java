@@ -100,7 +100,7 @@ public class Header {
 
         switch (getKeyBlockType()) {
 
-            case A_KEY_VARIANT_BINDING:
+            case _A_KEY_VARIANT_BINDING:
                 // header, optional blocks,encrypted key len in ascii, mac
                 // encrypted keylength is length of a triple length 3 DES key (24 bytes) which
                 // when transported , its in hex hence its 48
@@ -109,14 +109,14 @@ public class Header {
                 blocklength = 16 + optionalblocks + 48 + 8;
 
                 break;
-            case B_TDEA_KEY_DERIVATION_BINDING:
+            case _B_TDEA_KEY_DERIVATION_BINDING:
 
                 blocklength = 16 + optionalblocks + 48 + 16;// #header, optional blocks,key len in ascii, mac
                 break;
-            case C_TDEA_KEY_VARIANT_BINDING:
+            case _C_TDEA_KEY_VARIANT_BINDING:
                 blocklength = 16 + optionalblocks + 48 + 8;
                 break;
-            case D_AES_KEY_DERIVATION:
+            case _D_AES_KEY_DERIVATION:
                 blocklength = 16 + optionalblocks + 64 + 32;// #header, optional blocks,key len in ascii, mac
                 break;
 
