@@ -45,7 +45,7 @@ public class Main {
      * @throws Exception
      */
     public static void test192AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
         TR31KeyBlock kb = new TR31KeyBlock(header);
@@ -83,7 +83,7 @@ public class Main {
      * @throws Exception
      */
     public static void testKeyBlockTypeA() throws Exception {
-        Header header = new Header(KeyblockType.A_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._A_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
         TR31KeyBlock kb = new TR31KeyBlock(header);
@@ -127,7 +127,7 @@ public class Main {
      */
     public static void test2TDEAKeyBlockTypeB() throws Exception {
         //
-        Header header = new Header(KeyblockType.B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -173,7 +173,7 @@ public class Main {
      * @throws Exception
      */
     public static void test3TDEAKeyBlockTypeB() throws Exception {
-        Header header = new Header(KeyblockType.B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -217,7 +217,7 @@ public class Main {
      * @throws Exception
      */
     public static void test2TDEAKeyBlockTypeC() throws Exception {
-        Header header = new Header(KeyblockType.C_TDEA_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._C_TDEA_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -261,7 +261,7 @@ public class Main {
      * @throws Exception
      */
     public static void test256AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
@@ -305,7 +305,7 @@ public class Main {
      * @throws Exception
      */
     public static void test128AESKeyBlockTypeD() throws Exception {
-        Header header = new Header(KeyblockType.D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
                                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
                                    KeyUseFor.E_ENCRYPT_ONLY, "00");
 
