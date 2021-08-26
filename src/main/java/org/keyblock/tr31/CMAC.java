@@ -283,22 +283,4 @@ public class CMAC {
     }
 
 
-
-    private static void generate128AES_K1K2_KBMK(TR31KeyBlock kb) throws Exception {
-        Cipher cipher = kb.getCipherForK1K2AESGeneration();
-        Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-        Bytes result = k1k2KBPK.getValue1()
-                               .xor(Bytes.parseHex(kb.getDerivationConstant1For256AESAuthenticationForKBMK()));
-
-        cipher.init(Cipher.ENCRYPT_MODE, kb.getKBPK());
-        byte[] kbmk1 = cipher.doFinal(result.array());
-
-        Pair<Bytes, Bytes> kbekPair = new Pair<>(Bytes.from(kbmk1),
-
-                                                 Bytes.allocate(0));
-
-        kb.setKeyPairK1K2KBMK(kbekPair);
-
-    }
-
 }

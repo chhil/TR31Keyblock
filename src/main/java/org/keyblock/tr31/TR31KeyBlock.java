@@ -263,8 +263,6 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
     }
 
-
-
     public String getDerivationConstant2For3TDEAAuthenticationForKBMK() {
 
         return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
@@ -387,7 +385,6 @@ public class TR31KeyBlock {
 
     public void generateMAC() throws Exception {
 
-
         switch (header.getKeyBlockType()) {
             case _0_THALES_DES:
                 //$FALL-THROUGH$
@@ -488,8 +485,6 @@ public class TR31KeyBlock {
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
 
             result = Bytes.from(cipher.doFinal(data.array()));
-            System.out.println(result.encodeHex(true));
-
             setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost blocksize [16 or 8]
         }
         catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
@@ -554,7 +549,6 @@ public class TR31KeyBlock {
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
                 setEncryptLengthEncodedPaddedKey(transformation, iv);
                 break;
-
 
             }
             default:
@@ -784,7 +778,6 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
     }
 
-
     public String getDerivationConstant1For128AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
         return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
@@ -798,6 +791,7 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
     }
+
     public String getDerivationConstant1For128AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
         return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
@@ -847,9 +841,6 @@ public class TR31KeyBlock {
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
     }
 
-
-
-
     /**
      * Takes in an Enrypted keyblock and KBPK.
      * Extracts the header from it.
@@ -885,31 +876,31 @@ public class TR31KeyBlock {
 
     private boolean validateKeyblockTypeThalesAES_1(String keyBlock) throws Exception {
         boolean valid;
+        System.out.println("Encrypted KeyBlock :" + keyBlock);
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 16));
 
-        System.out.println("From Encrypted Keyblock - MAC :" + tempMAC);
+        System.out.println("From Encrypted Keyblock - MAC :" + tempMAC.encodeHex(true));
         String headerString = keyBlock.substring(0, 16);
         System.out.println("From Encrypted Keyblock - header :" + headerString);
         setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 16)));
-        System.out.println("From Encrypted Keyblock - Encrypted Key : " + getEncryptedKey()
-                                                  .encodeHex(true));
+        System.out.println("From Encrypted Keyblock - Encrypted Key : " + getEncryptedKey().encodeHex(true));
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
         Bytes iv = Bytes.from(headerString);
         System.out.println("IV : " + iv.encodeHex(true));
         IvParameterSpec ivSpec = new IvParameterSpec(iv.array());
         cipher.init(Cipher.DECRYPT_MODE, getKBEK(), ivSpec);
         Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
-        System.out.println("Code Decrypted Key :" + result.encodeHex(true));
+        System.out.println("Decrypted Length Encode Padded ClearKey  :" + result.encodeHex(true));
         int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
                                                    .encodeHex(true),
                 16);
 
         setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));// needs to
-                                                                                                             // be done
-                                                                                                             // before
-                                                                                                             // seting
-                                                                                                             // clear
-                                                                                                             // key
+                                                                                                          // be done
+                                                                                                          // before
+                                                                                                          // seting
+                                                                                                          // clear
+                                                                                                          // key
         setClearKey(result.copy(2, keyBitsLength / 8));
 
         generateMAC();
@@ -917,34 +908,27 @@ public class TR31KeyBlock {
         System.out.println("Encrypted Keyblock :" + keyBlock);
         System.out.println("From Encrypted Keyblock - Header :" + header);
 
-        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey()
-                                                                           .encodeHex(true));
+        System.out.println("Code generated - Encrypted key :" + getEncryptedKey().encodeHex(true));
 
         System.out.println("From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey()
-                                                                      .encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding()
-                                                                              .encodeHex(true));
-        if (!getMessageMAC()
-               .equals(tempMAC)) {
+        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
+        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
+        if (!getMessageMAC().equals(tempMAC)) {
 
             System.out.println(
                     String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), getMessageMAC()
-                                                       .encodeHex(true)));
+                            tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = false;
         }
         else {
             System.out.println(String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                    tempMAC.encodeHex(true), getMessageMAC()
-                                               .encodeHex(true)));
+                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = true;
         }
         return valid;
     }
 
-    protected boolean validateKeyblockTypeAES_D(String keyBlock)
-            throws Exception {
+    protected boolean validateKeyblockTypeAES_D(String keyBlock) throws Exception {
         boolean valid;
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 32));
         setEncryptedKey(Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - 32)));
@@ -963,29 +947,21 @@ public class TR31KeyBlock {
         System.out.println("Encrypted Keyblock :" + keyBlock);
         System.out.println("From Encrypted Keyblock - Header :" + header);
 
-        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey()
-                                                                           .encodeHex(true));
+        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey().encodeHex(true));
 
-        System.out.println(
-                "From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey()
-                                                                      .encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding()
-                                                                              .encodeHex(true));
-        if (!getMessageMAC()
-               .equals(tempMAC)) {
+        System.out.println("From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
+        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
+        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
+        if (!getMessageMAC().equals(tempMAC)) {
 
             System.out.println(
                     String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), getMessageMAC()
-                                                       .encodeHex(true)));
+                            tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = false;
         }
         else {
-            System.out.println(
-                    String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                            tempMAC.encodeHex(true), getMessageMAC()
-                                                       .encodeHex(true)));
+            System.out.println(String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
+                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = true;
         }
         return valid;

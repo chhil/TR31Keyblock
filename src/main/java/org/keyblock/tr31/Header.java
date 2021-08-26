@@ -75,6 +75,7 @@ public class Header {
 
         keyBlockYtpe = KeyblockType.fromString(header.substring(0, 1))
                                    .get();
+
         keyUsage = KeyUsage.fromString(header.substring(5, 7))
                            .get();
         algorithm = Algorithm.fromString(header.substring(7, 8))
@@ -99,6 +100,9 @@ public class Header {
         int optionalblocks = 0;
 
         switch (getKeyBlockType()) {
+            case _1_THALES_AES:
+                blocklength = 16 + optionalblocks + 64 + 16;// #header, optional blocks,key len in ascii, mac
+                break;
 
             case _A_KEY_VARIANT_BINDING:
                 // header, optional blocks,encrypted key len in ascii, mac
