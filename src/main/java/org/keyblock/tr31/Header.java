@@ -100,6 +100,9 @@ public class Header {
         int optionalblocks = 0;
 
         switch (getKeyBlockType()) {
+            case _0_THALES_DES:
+                blocklength = 16 + optionalblocks + 48 + 8;
+                break;
             case _1_THALES_AES:
                 blocklength = 16 + optionalblocks + 64 + 16;// #header, optional blocks,key len in ascii, mac
                 break;

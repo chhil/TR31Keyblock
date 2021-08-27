@@ -206,76 +206,62 @@ public class TR31KeyBlock {
         return "000000000000001B";
     }
 
-    public String getDerivationConstant1For2TDEAEncryptionForKBEK() {
+    public Pair<String, String> getDerivationConstantPair2TDEAEncryptionForKBEK() {
         // 01 00 00 00 00 00 00 80
         //
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
                 + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
-    }
-
-    public final String getDerivationConstant1For2TDEAAuthenticationForKBMK() {
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
                 + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
+        return new Pair<>(constant1, constant2);
     }
 
-    public final String getDerivationConstant2For2TDEAAuthenticationForKBMK() {
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+    public Pair<String, String> getDerivationConstantPairFor2TDEAAuthenticationForKBMK() {
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
                 + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
-    }
-
-    public String getDerivationConstant2For2TDEAEncryptionForKBEK() {
-        // 02 00 00 00 00 00 00 80
-        //
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
                 + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
+        return new Pair<>(constant1, constant2);
     }
 
-    public String getDerivationConstant1For3TDEAEncryptionForKBEK() {
 
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+
+    public Triplet<String,String,String> getDerivationConstantTripletFor3TDEAEncryptionForKBEK() {
+
+        String constant1 =  DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
-    }
-
-    public String getDerivationConstant2For3TDEAEncryptionForKBEK() {
-
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 =  DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
-    }
-
-    public final String getDerivationConstant3For3TDEAEncryptionForKBEK() {
-
-        return DerivationConstant._POS01_COUNTER._03 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant3 =  DerivationConstant._POS01_COUNTER._03 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
+
+        return new Triplet<>(constant1, constant2, constant3);
     }
 
-    public final String getDerivationConstant1For3TDEAAuthenticationForKBMK() {
+
+    public Triplet<String, String, String> getDerivationConstantTripletFor3TDEAAuthenticationForKBMK() {
         // 01 00 01 00 00 00 00 80
         //
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
-    }
-
-    public String getDerivationConstant2For3TDEAAuthenticationForKBMK() {
-
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
-    }
-
-    public String getDerivationConstant3For3TDEAAuthenticationForKBMK() {
-
-        return DerivationConstant._POS01_COUNTER._03 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant3 = DerivationConstant._POS01_COUNTER._03 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
                 + DerivationConstant._POS05_KEYLENGTH._00C0_3TDEA;
+        return new Triplet<>(constant1, constant2, constant3);
     }
+
+
 
     public void setKeyPairCMACKM1KM2KBMK(Pair<Bytes, Bytes> km1km2KBMK_CMAC) {
         this.cmacKeyPairKM1KM2KBMK = km1km2KBMK_CMAC;
@@ -424,7 +410,7 @@ public class TR31KeyBlock {
             }
 
             case _1_THALES_AES: {
-
+                //////
                 BLOCKSIZE = 16;
                 String transformation = "AES/CBC/NoPadding";
                 generateMAC(transformation, BLOCKSIZE, 8);
@@ -485,6 +471,7 @@ public class TR31KeyBlock {
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
 
             result = Bytes.from(cipher.doFinal(data.array()));
+            System.out.println(result.encodeHex(true));
             setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost blocksize [16 or 8]
         }
         catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
@@ -493,6 +480,7 @@ public class TR31KeyBlock {
         }
         setEncryptLengthEncodedPaddedKey();
     }
+
 
     public void setMessageMAC(Bytes result) {
         this.MAC = result;
@@ -764,82 +752,82 @@ public class TR31KeyBlock {
      *         A padded constant of 32 ASCII HEX (16 bytes), as hats the AES block
      *         size
      */
-    public String getDerivationConstant1For256AESEncryptionForKBEK() {
+    public Pair<String, String> getDerivationConstantPairFor256AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
-    }
-
-    public String getDerivationConstant2For256AESEncryptionForKBEK() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
+        return new Pair<>(constant1, constant2);
     }
 
-    public String getDerivationConstant1For128AESEncryptionForKBEK() {
+
+
+    public Pair<String, String> getDerivationConstantPairFor128AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
-    }
-
-    public String getDerivationConstant2For128AESEncryptionForKBEK() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
+        return new Pair<>(constant1, constant2);
+
     }
 
-    public String getDerivationConstant1For128AESAuthenticationForKBMK() {
+
+    public Pair<String,String> getDerivationConstantPairFor128AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant1= DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
+        String constant2= DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+                + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
+                + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
+        return new Pair<>(constant1, constant2);
     }
 
-    public String getDerivationConstant1For192AESEncryptionForKBEK() {
+
+
+    public Pair<String, String> getDerivationConstantPairFor192AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
-    }
-
-    public String getDerivationConstant1For192AESAuthenticationForKBMK() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
+        return new Pair<>(constant1, constant2);
+
     }
 
-    public String getDerivationConstant2For192AESAuthenticationForKBMK() {
+    public Pair<String, String> getDerivationConstantPairFor192AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
-    }
-
-    public String getDerivationConstant2For192AESEncryptionForKBEK() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
+        return new Pair<>(constant1, constant2);
+
     }
 
-    public String getDerivationConstant1For256AESAuthenticationForKBMK() {
+    public Pair<String, String> getDerivationConstantPairFor256AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
-    }
-
-    public String getDerivationConstant2For256AESAuthenticationForKBMK() {
-        String padding = "8000000000000000"; // 16 wide
-        return DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
+
+        return new Pair<>(constant1, constant2);
     }
+
+
 
     /**
      * Takes in an Enrypted keyblock and KBPK.

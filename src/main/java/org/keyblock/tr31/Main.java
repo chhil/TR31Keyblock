@@ -8,8 +8,6 @@ import at.favre.lib.bytes.Bytes;
 
 public class Main {
 
-
-
     /**
      * <pre>
      ********************
@@ -350,7 +348,6 @@ public class Main {
 
     }
 
-
     public static void eftLabEncryptedBlockTest() throws Exception {
 
         TR31KeyBlock kb = new TR31KeyBlock();
@@ -480,6 +477,7 @@ public class Main {
         }
 
     }
+
     public static void main(String[] args) throws Exception {
         testKeyBlockTypeA();
         test2TDEAKeyBlockTypeB();
@@ -497,8 +495,9 @@ public class Main {
         // incorrectly. Don't have access to any specification that lists how it is
         // calculated. Currently its using the TR31 Keyblock Type D code equivalent.
         testKeyBlockTypeThales128AES1();// doesn't work
-        testKeyBlockTypeThales256AES1();// doesn't work, the mac is incorrect when tested with EFT Labs sim
-        // decryptAndValidateAES256KBPKeyBlockType1();
+        testKeyBlockTypeThales256AES1();// doesn't work, the mac is incorrect when
+        // tested with EFT Labs sim
+        decryptAndValidateAES256KBPKeyBlockType1();
         //
 
     }

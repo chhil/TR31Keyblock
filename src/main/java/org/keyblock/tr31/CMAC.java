@@ -17,15 +17,16 @@ public class CMAC {
     private static byte[] dataToEncrypt;
 
 
-    public static Pair<Bytes, Bytes> generate192AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
-            String derivationConstant1, String derivationConstant2) throws Exception {
 
-        Bytes result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant1)));
+    private static Pair<Bytes, Bytes> generate192AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
+            Pair<String, String> derivationConstantPair) throws Exception {
+
+        Bytes result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstantPair.getValue0())));
         //
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
         byte[] kbek1 = cipher.doFinal(result.array());
 
-        result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstant2)));
+        result = Bytes.from(K2.xor(Bytes.parseHex(derivationConstantPair.getValue1())));
         //
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
         byte[] kbek2 = cipher.doFinal(result.array());
@@ -68,13 +69,12 @@ public class CMAC {
     }
 
     public static Pair<Bytes, Bytes> generate256AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
-            String derivationConstant1, String derivationConstant2) throws Exception {
+            Pair<String, String> derivationConstant) throws Exception {
 
-        Bytes result = K2.xor(Bytes.parseHex(derivationConstant1));
-
+        Bytes result = K2.xor(Bytes.parseHex(derivationConstant.getValue0()));
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
         byte[] keyPart1 = cipher.doFinal(result.array());
-        result = K2.xor(Bytes.parseHex(derivationConstant2));
+        result = K2.xor(Bytes.parseHex(derivationConstant.getValue1()));
         byte[] keyPart2 = cipher.doFinal(result.array());
 
         return new Pair<>(Bytes.from(keyPart1), Bytes.from(keyPart2));
@@ -82,10 +82,10 @@ public class CMAC {
     }
 
     public static Pair<Bytes, Bytes> generate128AESK1K2ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K2,
-            String derivationConstant) throws Exception {
+            Pair<String, String> derivationConstantPair) throws Exception {
 
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-        Bytes result = K2.xor(Bytes.parseHex(derivationConstant));
+        Bytes result = K2.xor(Bytes.parseHex(derivationConstantPair.getValue0()));
         byte[] keyPart1 = cipher.doFinal(result.array());
         // Since KBPK is 128, derived key must also be 128
         return new Pair<>(Bytes.from(keyPart1),
@@ -95,18 +95,18 @@ public class CMAC {
     }
 
     public static Triplet<Bytes, Bytes, Bytes> generate3TDEAK1K2K3ForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K1,
-            String derivationConstant1, String derivationConstant2, String derivationConstant3) throws Exception {
+            Triplet<String, String, String> derivationConstantTriplet) throws Exception {
 
-        Bytes result = K1.xor(Bytes.parseHex(derivationConstant1));
+        Bytes result = K1.xor(Bytes.parseHex(derivationConstantTriplet.getValue0()));
 
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
         byte[] keyPart1 = cipher.doFinal(result.array());
 
-        result = K1.xor(Bytes.parseHex(derivationConstant2));
+        result = K1.xor(Bytes.parseHex(derivationConstantTriplet.getValue1()));
 
         byte[] keyPartk2 = cipher.doFinal(result.array());
 
-        result = K1.xor(Bytes.parseHex(derivationConstant3));
+        result = K1.xor(Bytes.parseHex(derivationConstantTriplet.getValue2()));
 
         byte[] keyPart3 = cipher.doFinal(result.array());
 
@@ -117,12 +117,12 @@ public class CMAC {
     }
 
     public static Pair<Bytes, Bytes> generateK1K2keysForKey(SecretKeySpec keySpec, Cipher cipher, Bytes K1,
-            String derivationConstant1, String derivationConstant2) throws Exception {
+            Pair<String, String> derivationConstantPair) throws Exception {
 
-        Bytes result = K1.xor(Bytes.parseHex(derivationConstant1));
+        Bytes result = K1.xor(Bytes.parseHex(derivationConstantPair.getValue0()));
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
         byte[] keyPart1 = cipher.doFinal(result.array());
-        result = K1.xor(Bytes.parseHex(derivationConstant2));
+        result = K1.xor(Bytes.parseHex(derivationConstantPair.getValue1()));
         byte[] keyPart2 = cipher.doFinal(result.array());
         return new Pair<>(Bytes.from(keyPart1), Bytes.from(keyPart2));
 
@@ -181,31 +181,28 @@ public class CMAC {
                         * 8) {
                     case 128: {// Double length TDEA key, derived KBEK and KBMK will each be 3 parts.
                         Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-                        String derivationConstant1 = kb.getDerivationConstant1For2TDEAEncryptionForKBEK();// for KBEK1
-                        String derivationConstant2 = kb.getDerivationConstant2For2TDEAEncryptionForKBEK();// For KBEK2
+                        Pair<String, String> derivationConstantPair = kb.getDerivationConstantPair2TDEAEncryptionForKBEK();// for
+                                                                                                                       // KBEK1/2
                         kb.setKeyPairK1K2KBEK(generateK1K2keysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
-                                k1k2KBPK.getValue0(), derivationConstant1, derivationConstant2));
-                        derivationConstant1 = kb.getDerivationConstant1For2TDEAAuthenticationForKBMK();// for KBMK1
-                        derivationConstant2 = kb.getDerivationConstant2For2TDEAAuthenticationForKBMK();// For KBMK2
+                                k1k2KBPK.getValue0(), derivationConstantPair));
+                        derivationConstantPair = kb.getDerivationConstantPairFor2TDEAAuthenticationForKBMK();// for
+                                                                                                             // KBMK1/2
                         kb.setKeyPairK1K2KBMK(generateK1K2keysForKey(kb.getKBPK(), kb.getCipherForK1K2TDEAGeneration(),
-                                k1k2KBPK.getValue0(), derivationConstant1, derivationConstant2));
+                                k1k2KBPK.getValue0(), derivationConstantPair));
                         // generate2TDEA_K1K2_KBMK(kb); refactored to above call
                         break;
                     }
                     case 192: {// Triple length TDEA Key, derived KBEK and KBMK will each be 3 parts.
                         Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-                        String derivationConstant1 = kb.getDerivationConstant1For3TDEAEncryptionForKBEK();// for KBEK1
-                        String derivationConstant2 = kb.getDerivationConstant2For3TDEAEncryptionForKBEK();// for KBEK2
-                        String derivationConstant3 = kb.getDerivationConstant3For3TDEAEncryptionForKBEK();// for KBEK3
+                        // for KBEK1/2/3
+                        Triplet<String, String, String> derivationConstantTriplet = kb.getDerivationConstantTripletFor3TDEAEncryptionForKBEK();
+
                         kb.setKeyTripletK1K2K3KBEK(generate3TDEAK1K2K3ForKey(kb.getKBPK(),
-                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstant1,
-                                derivationConstant2, derivationConstant3));// KBEK based on constants passed in
-                        derivationConstant1 = kb.getDerivationConstant1For3TDEAAuthenticationForKBMK();// for KBMK1
-                        derivationConstant2 = kb.getDerivationConstant2For3TDEAAuthenticationForKBMK();// for KBMK2
-                        derivationConstant3 = kb.getDerivationConstant3For3TDEAAuthenticationForKBMK();// for KBMK3
+                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstantTriplet));
+                        // for KBMK1/2/3
+                        derivationConstantTriplet = kb.getDerivationConstantTripletFor3TDEAAuthenticationForKBMK();
                         kb.setKeyTripletK1K2K3KBMK(generate3TDEAK1K2K3ForKey(kb.getKBPK(),
-                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstant1,
-                                derivationConstant2, derivationConstant3)); // KBMK based on constants pased in
+                                kb.getCipherForK1K2TDEAGeneration(), k1k2KBPK.getValue0(), derivationConstantTriplet));
                         break;
                     }
                     default:
@@ -232,37 +229,34 @@ public class CMAC {
                         * 8) {
                     case 128: {
                         Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-                        String derivationConstant1 = kb.getDerivationConstant1For128AESEncryptionForKBEK();
+                        Pair<String, String> derivationConstantPair = kb.getDerivationConstantPairFor128AESEncryptionForKBEK();
                         kb.setKeyPairK1K2KBEK(generate128AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1));// Generates KBEK 1 , KBEK2 not needed
-                        derivationConstant1 = kb.getDerivationConstant1For128AESAuthenticationForKBMK();
+                                derivationConstantPair));// Generates KBEK 1 , KBEK2 not needed
+                        derivationConstantPair = kb.getDerivationConstantPairFor128AESAuthenticationForKBMK();
                         kb.setKeyPairK1K2KBMK(generate128AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1));// Generates KBMK 1 , KBMK2 not needed
+                                derivationConstantPair));// Generates KBMK 1 , KBMK2 not needed
 
                         break;
                     }
                     case 192: {
                         Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-                        String derivationConstant1 = kb.getDerivationConstant1For192AESEncryptionForKBEK();
-                        String derivationConstant2 = kb.getDerivationConstant2For192AESEncryptionForKBEK();
-                        kb.setKeyPairK1K2KBEK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1, derivationConstant2));// Generates KBEK 1 , KBEK2
-                        derivationConstant1 = kb.getDerivationConstant1For192AESAuthenticationForKBMK();
-                        derivationConstant2 = kb.getDerivationConstant2For192AESAuthenticationForKBMK();
-                        kb.setKeyPairK1K2KBMK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1, derivationConstant2));// Generates KBMK 1 , KBMK2
+
+                        Pair<String, String> derivationConstantPair = kb.getDerivationConstantPairFor192AESEncryptionForKBEK();
+
+                        kb.setKeyPairK1K2KBEK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),derivationConstantPair));// Generates KBEK 1 , KBEK2
+                         derivationConstantPair = kb.getDerivationConstantPairFor192AESAuthenticationForKBMK();
+
+                        kb.setKeyPairK1K2KBMK(generate192AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),derivationConstantPair));// Generates KBMK 1 , KBMK2
                         break;
                     }
                     case 256: {
                         Pair<Bytes, Bytes> k1k2KBPK = kb.getCMACKeyPairK1K2KBPK();
-                        String derivationConstant1 = kb.getDerivationConstant1For256AESEncryptionForKBEK();
-                        String derivationConstant2 = kb.getDerivationConstant2For256AESEncryptionForKBEK();
+                        Pair<String, String> derivationConstantPair = kb.getDerivationConstantPairFor256AESEncryptionForKBEK();
                         kb.setKeyPairK1K2KBEK(generate256AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1, derivationConstant2));// Generates KBEK 1 , KBEK2
-                        derivationConstant1 = kb.getDerivationConstant1For256AESAuthenticationForKBMK();
-                        derivationConstant2 = kb.getDerivationConstant2For256AESAuthenticationForKBMK();
+                                derivationConstantPair));// Generates KBEK 1 , KBEK2
+                        derivationConstantPair = kb.getDerivationConstantPairFor256AESAuthenticationForKBMK();
                         kb.setKeyPairK1K2KBMK(generate256AESK1K2ForKey(kb.getKBPK(), cipher, k1k2KBPK.getValue1(),
-                                derivationConstant1, derivationConstant2));// Generates KBMK 1 , KBMK2
+                                derivationConstantPair));// Generates KBMK 1 , KBMK2
                         break;
                     }
                     default:
@@ -281,6 +275,9 @@ public class CMAC {
         }
 
     }
+
+
+
 
 
 }

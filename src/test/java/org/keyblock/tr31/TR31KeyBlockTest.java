@@ -2,14 +2,13 @@ package org.keyblock.tr31;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import at.favre.lib.bytes.Bytes;
 
 public class TR31KeyBlockTest {
-    @Disabled
+    @Test
     @DisplayName("TR31 KeyBlock Type A")
     void testKeyBlockTypeA() throws Exception {
         Header header = new Header(KeyblockType._A_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
@@ -43,7 +42,7 @@ public class TR31KeyBlockTest {
         System.out.println(kb);
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 2TDEA KBPK Keyblock type B")
     void test2TDEAKeyBlockTypeB() throws Exception {
         //
@@ -83,7 +82,7 @@ public class TR31KeyBlockTest {
                             .encodeHex(true));
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 2TDEA KBPK Keyblock type C")
     void test2TDEAKeyBlockTypeC() throws Exception {
         Header header = new Header(KeyblockType._C_TDEA_KEY_VARIANT_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
@@ -120,7 +119,7 @@ public class TR31KeyBlockTest {
 
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 3TDEA KBPK Keyblock type B")
     void test3TDEAKeyBlockTypeB() throws Exception {
         Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
@@ -163,7 +162,7 @@ public class TR31KeyBlockTest {
 
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 AES 256 KBPK Keyblock Type D")
     void test256AESKeyBlockTypeD() throws Exception {
         Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
@@ -205,7 +204,7 @@ public class TR31KeyBlockTest {
 
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 AES 128 KBPK Keyblock Type D")
     void test128AESKeyBlockTypeD() throws Exception {
         Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
@@ -247,7 +246,7 @@ public class TR31KeyBlockTest {
 
     }
 
-    @Disabled
+    @Test
     @DisplayName("TR31 AES 192 KBPK Keyblock Type D")
     void test192AESKeyBlockTypeD() throws Exception {
         Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
@@ -288,7 +287,7 @@ public class TR31KeyBlockTest {
                             .encodeHex(true));
     }
 
-    @Disabled
+    @Test
     @DisplayName("Thales 2DES Keyblock type 0")
     void testKeyBlockTypeThales2Des0() throws Exception {
         Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
@@ -298,6 +297,7 @@ public class TR31KeyBlockTest {
         kb.setClearKey(Bytes.parseHex("F039121BEC83D26B169BDCD5B22AAF8F"));
         kb.setKBPK("89E88CF7931444F3 34BD7547FC3F380C");// Double length DES key
         kb.generate();
+        System.out.println(kb.toString());
 
         System.out.println(kb.toString());
         assertEquals(Bytes.parseHex("E627CA46"), kb.getMessageMAC());
@@ -324,7 +324,7 @@ public class TR31KeyBlockTest {
                             .encodeHex(true));
     }
 
-    @Disabled
+    @Test
     @DisplayName("Thales 3DES Keyblock Type 0")
     void testKeyBlockTypeThales3Des0() throws Exception {
         Header header = new Header(KeyblockType._0_THALES_DES, KeyUsage._P0_PIN_ENCRYPTION,
@@ -394,6 +394,7 @@ public class TR31KeyBlockTest {
      * @throws Exception
      */
     @Test
+    @DisplayName("Thales Validate AES128 KBPK keyblock type 1: test will fail for MAC mismatch")
     void decryptAndValidateAES128KeyBlockType1() throws Exception {
         TR31KeyBlock kb = new TR31KeyBlock();
         String keyBlock = "10096P0TE00E000001309DFC752C7DBE53A3480510652D7B845AF4E211F72B502D9B32AF702A64EA459DED8BE95188D9";
@@ -421,6 +422,44 @@ public class TR31KeyBlockTest {
         assertEquals(Bytes.parseHex("31FE334A0E1120D78C1C970D99E77530"), kb.getKeyPairK1K2KBMK()
                                                                            .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBMK()
+                                          .getValue1());
+        // The above pass implying we can get the Clear key using the KBEK.
+        // The following WILL FAIL. Implying the MAC key generated is not correct or the
+        // data used for MACing is not correct.
+        // Currently don't have a Thales spec that tells me what is the correct way for
+        // generating the MAC key and MACing data
+        assertEquals(Bytes.parseHex("459DED8BE95188D9"), kb.getMessageMAC());
+
+    }
+
+    @Test
+    @DisplayName("Thales Validate AES256 KBPK keyblock type 1: test will fail for MAC mismatch")
+    void decryptAndValidateAES256KBPKeyBlockType1() throws Exception {
+        TR31KeyBlock kb = new TR31KeyBlock();
+        String keyBlock = "10096P0TE00E0000CF29A901B5B5DA7028693D4BE058A7B366D3CD2F5862D94E97BCD6D9F28B414A377052CE7A04D821";
+        String kbpkString = "9B71333A13F9FAE72F9D0E2DAB4AD6784718012F9244033F3F26A2DE0C8AA11A";// this is the thales
+                                                                                               // test AES KBPK
+        if (kb.decryptAndValidateEncryptedKeyblock(keyBlock, kbpkString)) {
+            System.out.println("VALID");
+        }
+        else {
+            System.out.println("INVALID");
+        }
+        System.out.println(kb.toString());
+        assertEquals(Bytes.parseHex("CF29A901B5B5DA7028693D4BE058A7B366D3CD2F5862D94E97BCD6D9F28B414A"),
+                kb.getEncryptedKey());
+        assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F23D4C749F32D15DF992467829C1E"),
+                kb.getLengthEncodedPaddedClearKey());
+        assertEquals(Bytes.parseHex("23D4C749F32D15DF992467829C1E"), kb.getClearKeyPadding());
+        assertEquals(Bytes.parseHex("0080F039121BEC83D26B169BDCD5B22AAF8F"), kb.getlengthEncodedClearKey());
+        assertEquals(Bytes.parseHex("1B39BAA881FCEDC1CD5138CC5A31F2E8"), kb.getKeyPairK1K2KBEK()
+                                                                           .getValue0());
+        assertEquals(Bytes.parseHex("2E1BB7EA3B29CF875F6AAB21268F0D17"), kb.getKeyPairK1K2KBEK()
+                                                                           .getValue1());
+
+        assertEquals(Bytes.parseHex("B9C8CD6543528A1C6859765503FBB3A8"), kb.getKeyPairK1K2KBMK()
+                                                                           .getValue0());
+        assertEquals(Bytes.parseHex("7C533BC73933513AF534A90F525308F2"), kb.getKeyPairK1K2KBMK()
                                           .getValue1());
         // The above pass implying we can get the Clear key using the KBEK.
         // The following WILL FAIL. Implying the MAC key generated is not correct or the
