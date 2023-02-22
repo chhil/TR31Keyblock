@@ -20,7 +20,6 @@ public enum KeyUseFor {
 
     KeyUseFor(String use) {
         this.useFor = use;
-        // TODO Auto-generated constructor stub
     }
 
     public String get() {

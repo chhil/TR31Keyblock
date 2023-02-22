@@ -87,8 +87,6 @@ public class Header {
                        .get();
         optionalBlock = header.substring(12, 14);
         reserved = header.substring(14, 16);
-
-        // TODO Auto-generated constructor stub
     }
 
     @Override
@@ -144,16 +142,13 @@ public class Header {
             return temp.toString();
         }
         catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
-        } // reserved field
+        }
 
         return null;
-
     }
 
     private String getVersion() {
-        // TODO Auto-generated method stub
         return version;
     }
 
