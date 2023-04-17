@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import at.favre.lib.bytes.Bytes;
 
 public class TR31KeyBlockTest {
+
     @Test
     @DisplayName("TR31 KeyBlock Type A")
     void testKeyBlockTypeA() throws Exception {
@@ -39,6 +40,19 @@ public class TR31KeyBlockTest {
                         + kb.getMessageMAC()
                             .encodeHex(true));
 
+        System.out.println(kb);
+    }
+
+    @Test
+    @DisplayName("TR31 KeyBlock Type A decrypt ANSI")
+    void testKeyBlockTypeA_ANSI() throws Exception {
+        // See example in ANSI X9 TR-31 2018 spec
+        TR31KeyBlock kb = new TR31KeyBlock();
+        kb.decryptKeyBlock(
+                "A0000P0TE00E0000" + "F5161ED902807AF26F1D62263644BD24192FDB3193C73030" + "1CEE8701",
+                "89E88CF7931444F334BD7547FC3F380C"
+                );
+        assertEquals("A0072P0TE00E0000",  kb.getHeader().toString());
         System.out.println(kb);
     }
 
@@ -80,6 +94,18 @@ public class TR31KeyBlockTest {
                             .encodeHex(true)
                         + kb.getMessageMAC()
                             .encodeHex(true));
+    }
+
+    @Test
+    @DisplayName("TR31 KeyBlock Type B decrypt ANSI")
+    void testKeyBlockTypeB_ANSI() throws Exception {
+        // See example in ANSI X9 TR-31 2018 spec
+        TR31KeyBlock kb = new TR31KeyBlock();
+        kb.decryptKeyBlock(
+                "B0080P0TE00E0000" + "94B420079CC80BA3461F86FE26EFC4A3B8E4FA4C5F534117" + "6EED7B727B8A248E",
+                "DD7515F2BFC17F85 CE48F3CA25CB21F6"
+        );
+        System.out.println(kb);
     }
 
     @Test
@@ -202,6 +228,20 @@ public class TR31KeyBlockTest {
                         + kb.getMessageMAC()
                             .encodeHex(true));
 
+    }
+
+    @Test
+    @DisplayName("TR31 AES 256 KBPK Keyblock Type D decrypt ANSI")
+    void testKeyBlockTypeD_ANSI() throws Exception {
+        // See example in ANSI X9 TR-31 2018 spec
+        TR31KeyBlock kb = new TR31KeyBlock();
+        kb.decryptKeyBlock(
+                "D0112P0AE00E0000"
+                        + "B82679114F470F540165EDFBF7E250FCEA43F810D215F8D207E2E417C07156A2"
+                        + "7E8E31DA05F7425509593D03A457DC34",
+                "88E1AB2A2E3DD38C1FA039A536500CC8A87AB9D62DC92C01058FA79F44657DE6"
+        );
+        System.out.println(kb);
     }
 
     @Test

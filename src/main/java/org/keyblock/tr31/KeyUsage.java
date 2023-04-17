@@ -1,5 +1,6 @@
 package org.keyblock.tr31;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -168,7 +169,7 @@ public enum KeyUsage {
     }
 
     public List<KeyUseFor> getAllowedusage() {
-        return List.copyOf(allowedUsage);
+        return new ArrayList<>(allowedUsage);
     }
 
     public static Optional<KeyUsage> fromString(String temp) {

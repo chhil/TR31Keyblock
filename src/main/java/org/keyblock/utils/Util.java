@@ -2,21 +2,6 @@ package org.keyblock.utils;
 
 public class Util {
 
-
-    /**
-     * Source JPOS ISOUtil.padleft
-     * pad to the left
-     *
-     * @param s
-     *            - original string
-     * @param len
-     *            - desired len
-     * @param c
-     *            - padding char
-     * @return padded string
-     * @throws Exception
-     *             on error
-     */
     public static String padleft(String s, int len, char c) throws Exception {
         s = s.trim();
         if (s.length() > len) {
@@ -31,7 +16,6 @@ public class Util {
         return d.toString();
     }
 
-    // https://android.googlesource.com/platform/frameworks/base.git/+/jb-mr1-release/core/java/com/android/internal/util/HexDump.java
     public static String dumpHexString(byte[] array) {
         return dumpHexString(array, 0, array.length);
     }
@@ -126,10 +110,5 @@ public class Util {
         }
         return new String(buf);
     }
-    /////// END Hexdump
-
-
-
-
 
 }

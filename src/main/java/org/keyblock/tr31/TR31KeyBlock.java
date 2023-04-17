@@ -1,9 +1,9 @@
 package org.keyblock.tr31;
 
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -44,48 +44,20 @@ public class TR31KeyBlock {
 
     public TR31KeyBlock(Header header) {
         this.header = header;
-        // TODO Auto-generated constructor stub
     }
 
-    public TR31KeyBlock() {
-        // TODO Auto-generated constructor stub
-    }
+    public TR31KeyBlock() { }
 
-    public Cipher getCipherForK1K2TDEAGeneration() {
-        try {
-            return Cipher.getInstance("DESede/ECB/NoPadding");
-        }
-        catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public Cipher getCipherForK1K2AESGeneration() {
-        try {
-            return Cipher.getInstance("AES/ECB/NoPadding");
-        }
-        catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public void setCipherForK1K2GenerationForKBPF(Cipher cipherForK1K2GenerationForKBPF) {
-    }
-
-    public SecretKeySpec getKBPK() {
+    SecretKeySpec getKBPK() {
         return KBPK;
     }
 
-    public String getEncodedHexStringKBPK() {
+    String getEncodedHexStringKBPK() {
         return Bytes.from(KBPK.getEncoded())
                     .encodeHex(true);
     }
 
-    public String getEncodedHexPrettyString(SecretKeySpec key) {
+    String getEncodedHexPrettyString(SecretKeySpec key) {
         if (key == null) {
             return null;
         }
@@ -96,45 +68,30 @@ public class TR31KeyBlock {
 
     }
 
-    public byte[] getEncodedByteArrayKBPK() {
-        return KBPK.getEncoded();
-    }
-
-    public void setKBPK(SecretKeySpec key) {
-        if ("DESede".equals(key.getAlgorithm())) {
-            // byte[] temp = Util.adjustDESParity(key.getEncoded());
-            // SecretKeySpec spec = new SecretKeySpec(temp, key.getAlgorithm());
-            KBPK = convertToTripleLengthKey(key);
-        }
-
-    }
-
-    public Pair<Bytes, Bytes> getCMACKeyPairK1K2KBPK() {
+    Pair<Bytes, Bytes> getCMACKeyPairK1K2KBPK() {
         return cmacKeyPairK1K2KBPK;
     }
 
-    public void setKeyPairCMACK1K2KBPK(Pair<Bytes, Bytes> keyPairK1K2KBPK) {
+    void setKeyPairCMACK1K2KBPK(Pair<Bytes, Bytes> keyPairK1K2KBPK) {
         this.cmacKeyPairK1K2KBPK = keyPairK1K2KBPK;
     }
 
-    public SecretKeySpec getKBEK() {
+    SecretKeySpec getKBEK() {
         return KBEK;
     }
 
-    public void setKBEK(SecretKeySpec KBEK) {
+    void setKBEK(SecretKeySpec KBEK) {
         if ("DESede".equals(KBEK.getAlgorithm())) {
-            // byte[] temp = Util.adjustDESParity(key.getEncoded());
-            // SecretKeySpec spec = new SecretKeySpec(temp, key.getAlgorithm());
-            KBEK = convertToTripleLengthKey(KBEK);
+            KBEK = KeyHelper.convertToTripleLengthKey(KBEK);
         }
         this.KBEK = KBEK;
     }
 
-    public Pair<Bytes, Bytes> getKeyPairK1K2KBEK() {
+    Pair<Bytes, Bytes> getKeyPairK1K2KBEK() {
         return KeyPairK1K2KBEK;
     }
 
-    public void setKeyPairK1K2KBEK(Pair<Bytes, Bytes> kbekPair) {
+    void setKeyPairK1K2KBEK(Pair<Bytes, Bytes> kbekPair) {
         this.KeyPairK1K2KBEK = kbekPair;
         Bytes tempKBEK = KeyPairK1K2KBEK.getValue0()
                                         .append(KeyPairK1K2KBEK.getValue1());
@@ -142,32 +99,28 @@ public class TR31KeyBlock {
             setKBEK(new SecretKeySpec(tempKBEK.array(), KBPK.getAlgorithm()));
         }
         catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
-    public SecretKeySpec getKBMK() {
+    SecretKeySpec getKBMK() {
         return KBMKAuthenticationKey;
     }
 
-    public void setKBMK(SecretKeySpec kkbmKeySpec) {
+    void setKBMK(SecretKeySpec kkbmKeySpec) {
         if ("DESede".equals(kkbmKeySpec.getAlgorithm())) {
-            // byte[] temp = Util.adjustDESParity(key.getEncoded());
-            // SecretKeySpec spec = new SecretKeySpec(temp, key.getAlgorithm());
-            KBMKAuthenticationKey = convertToTripleLengthKey(kkbmKeySpec);
+            KBMKAuthenticationKey = KeyHelper.convertToTripleLengthKey(kkbmKeySpec);
         }
         else {
             KBMKAuthenticationKey = kkbmKeySpec;
         }
-
     }
 
-    public Pair<Bytes, Bytes> getKeyPairK1K2KBMK() {
+    Pair<Bytes, Bytes> getKeyPairK1K2KBMK() {
         return keyPairK1K2KBMK;
     }
 
-    public void setKeyPairK1K2KBMK(Pair<Bytes, Bytes> keyPairK1K2KBMK) {
+    void setKeyPairK1K2KBMK(Pair<Bytes, Bytes> keyPairK1K2KBMK) {
         this.keyPairK1K2KBMK = keyPairK1K2KBMK;
 
         Bytes tempKBMK = keyPairK1K2KBMK.getValue0()
@@ -176,37 +129,11 @@ public class TR31KeyBlock {
             setKBMK(new SecretKeySpec(tempKBMK.array(), KBPK.getAlgorithm()));
         }
         catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-
     }
 
-    public static SecretKeySpec convertToTripleLengthKey(SecretKeySpec key) {
-
-        if (key.getEncoded().length == 16) {
-            // if its double length key
-            // convert 128 bits key i.e. double length 3DES key to triple length 3DES 24 bit
-            // key. K1 K2 K1
-            byte[] tdesKey = new byte[24];
-            System.arraycopy(key.getEncoded(), 0, tdesKey, 0, 16);// K1 K2 , 16 wide key = 8 bytes k1 + 8 bytes k2
-            System.arraycopy(key.getEncoded(), 0, tdesKey, 16, 8); // K1 K2 K1, take the 8 bytes K1 and append it
-            return new SecretKeySpec(tdesKey, key.getAlgorithm());
-        }
-        // its either single, triple or incorrect length
-        return key;
-    }
-
-    /**
-     * Used for K1 K2 generation of KBPK and KBMK
-     *
-     * @return
-     */
-    public String getDerivationConstantForK1K2GenerationOfKey() {
-        return "000000000000001B";
-    }
-
-    public Pair<String, String> getDerivationConstantPair2TDEAEncryptionForKBEK() {
+    Pair<String, String> getDerivationConstantPair2TDEAEncryptionForKBEK() {
         // 01 00 00 00 00 00 00 80
         //
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
@@ -218,7 +145,7 @@ public class TR31KeyBlock {
         return new Pair<>(constant1, constant2);
     }
 
-    public Pair<String, String> getDerivationConstantPairFor2TDEAAuthenticationForKBMK() {
+    Pair<String, String> getDerivationConstantPairFor2TDEAAuthenticationForKBMK() {
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0000_2TDEA
                 + DerivationConstant._POS05_KEYLENGTH._0080_2TDEA;
@@ -228,9 +155,7 @@ public class TR31KeyBlock {
         return new Pair<>(constant1, constant2);
     }
 
-
-
-    public Triplet<String,String,String> getDerivationConstantTripletFor3TDEAEncryptionForKBEK() {
+    Triplet<String,String,String> getDerivationConstantTripletFor3TDEAEncryptionForKBEK() {
 
         String constant1 =  DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0001_3TDEA
@@ -245,8 +170,7 @@ public class TR31KeyBlock {
         return new Triplet<>(constant1, constant2, constant3);
     }
 
-
-    public Triplet<String, String, String> getDerivationConstantTripletFor3TDEAAuthenticationForKBMK() {
+    Triplet<String, String, String> getDerivationConstantTripletFor3TDEAAuthenticationForKBMK() {
         // 01 00 01 00 00 00 00 80
         //
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
@@ -261,9 +185,7 @@ public class TR31KeyBlock {
         return new Triplet<>(constant1, constant2, constant3);
     }
 
-
-
-    public void setKeyPairCMACKM1KM2KBMK(Pair<Bytes, Bytes> km1km2KBMK_CMAC) {
+    void setKeyPairCMACKM1KM2KBMK(Pair<Bytes, Bytes> km1km2KBMK_CMAC) {
         this.cmacKeyPairKM1KM2KBMK = km1km2KBMK_CMAC;
 
         Bytes tempKBMKMACKey = cmacKeyPairKM1KM2KBMK.getValue0()
@@ -272,17 +194,14 @@ public class TR31KeyBlock {
             setKBMK_MAC_Key(new SecretKeySpec(tempKBMKMACKey.array(), KBPK.getAlgorithm()));
         }
         catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
     }
 
-    public void setKBMK_MAC_Key(SecretKeySpec kbmk_cmac) {
+    void setKBMK_MAC_Key(SecretKeySpec kbmk_cmac) {
         if ("DESede".equals(kbmk_cmac.getAlgorithm())) {
-            // byte[] temp = Util.adjustDESParity(key.getEncoded());
-            // SecretKeySpec spec = new SecretKeySpec(temp, key.getAlgorithm());
-            KBMK_MAC_KEY = convertToTripleLengthKey(kbmk_cmac);
+            KBMK_MAC_KEY = KeyHelper.convertToTripleLengthKey(kbmk_cmac);
         }
         else {
             KBMK_MAC_KEY = kbmk_cmac;
@@ -290,11 +209,11 @@ public class TR31KeyBlock {
 
     }
 
-    public SecretKeySpec getKBMK_MAC_Key() {
+    SecretKeySpec getKBMK_MAC_Key() {
         return KBMK_MAC_KEY;
     }
 
-    public Pair<Bytes, Bytes> getKeyPairCMACKM1KM2KBMK() {
+    Pair<Bytes, Bytes> getKeyPairCMACKM1KM2KBMK() {
         return cmacKeyPairKM1KM2KBMK;
     }
 
@@ -320,25 +239,36 @@ public class TR31KeyBlock {
         return lengthEncodedClearKey;
     }
 
-    private void generateLengthEncodedPaddedClearKey() throws Exception {
+    private boolean isAesEncrypted() {
         // Blocksize can be determined from the KBPK key size or the keyblock type. KBPK
         // may not be set before the clear key. Header is assumed to be set.
         if (header != null) {
             if (header.getKeyBlockType() == KeyblockType._D_AES_KEY_DERIVATION
                     || header.getKeyBlockType() == KeyblockType._1_THALES_AES) {
-                BLOCKSIZE = 16;
+                return true;
             }
             else {
-                BLOCKSIZE = 8;
+                return false;
             }
         }
         else if (getKBPK() != null) {
             if ("AES".equals(getKBPK().getAlgorithm())) {
-                BLOCKSIZE = 16;
+                return true;
             }
             else {
-                BLOCKSIZE = 8;
+                return false;
             }
+        }
+
+        throw new UnsupportedOperationException();
+    }
+
+    private void generateLengthEncodedPaddedClearKey() throws Exception {
+        if (isAesEncrypted()) {
+            BLOCKSIZE = 16;
+        }
+        else {
+            BLOCKSIZE = 8;
         }
         int keyLengthBits = clearKey.length() * 8;
         Bytes encodedLength = Bytes.parseHex(Util.padleft(Integer.toHexString(keyLengthBits), 4, '0'));
@@ -354,8 +284,6 @@ public class TR31KeyBlock {
             // Fill it with random bytes. Note, this will result in a different MAC value
             // being generated eveytime even when the key is the same.
 
-            new SecureRandom();
-
             if (getClearKeyPadding() == null) {
                 // At times either for testing you want to set a known value for the padding or
                 // when you receive a keyblock that has its own padding, we want to use that
@@ -369,8 +297,110 @@ public class TR31KeyBlock {
 
     }
 
-    public void generateMAC() throws Exception {
+    private int getMACLen() {
+        switch (header.getKeyBlockType()) {
+            case _A_KEY_VARIANT_BINDING:
+                //$FALL-THROUGH$
+            case _C_TDEA_KEY_VARIANT_BINDING: {
+                return 4;
+            }
 
+            case _B_TDEA_KEY_DERIVATION_BINDING: {
+                return 8;
+            }
+
+            case _D_AES_KEY_DERIVATION: {
+                return 16;
+            }
+
+            default: {
+                throw new UnsupportedOperationException();
+            }
+        }
+    }
+
+    public void decryptKeyBlock(String keyBlock, String kbpk) throws Exception {
+        // Currently not handling optional headers so we know header is 16 wide
+        header = new Header(keyBlock.substring(0, 16));
+        setKBPK(kbpk);
+        KeyHelper.deriveAllKeys(this);
+
+        // 2 hex ASCII chars per byte
+        final int numMacHexChars = getMACLen() * 2;
+
+        // Remove header and MAC to get encrypted key chunk
+        encryptedKey = Bytes.parseHex(keyBlock.substring(16, keyBlock.length() - numMacHexChars));
+
+        // MAC is the last chunk of the raw key block
+        final Bytes givenMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - numMacHexChars));
+
+        final byte[] iv;
+
+        switch (header.getKeyBlockType()) {
+            case _A_KEY_VARIANT_BINDING:
+                //$FALL-THROUGH$
+            case _C_TDEA_KEY_VARIANT_BINDING: {
+                String headerStr = header.toString();
+                // IV is the first 8 chars (8 bytes) of the header
+                iv = headerStr.substring(0, 8).getBytes(StandardCharsets.US_ASCII);
+                break;
+            }
+
+            case _B_TDEA_KEY_DERIVATION_BINDING: {
+                // IV is the first 8 bytes of the MAC
+                iv = givenMAC.copy(0, 8).array();
+                break;
+            }
+
+            case _D_AES_KEY_DERIVATION: {
+                // IV is the first 16 bytes of the MAC
+                iv = givenMAC.copy(0, 16).array();
+                break;
+            }
+
+            default: {
+                throw new UnsupportedOperationException();
+            }
+        }
+
+        if (isAesEncrypted()) {
+            decryptAesKeyBlock(iv);
+        } else {
+            decryptTdesKeyBlock(iv);
+        }
+
+        generateMAC();
+        verifyMAC(givenMAC);
+    }
+
+    private void decryptTdesKeyBlock(byte[] iv) throws Exception {
+        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, getKBEK(), new IvParameterSpec(iv));
+        Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
+        int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
+                        .encodeHex(true), 16);
+        setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
+        setClearKey(result.copy(2, keyBitsLength / 8));
+    }
+
+    private void decryptAesKeyBlock(byte[] iv) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, getKBEK(), new IvParameterSpec(iv));
+        Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
+        int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
+                .encodeHex(true), 16);
+        setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
+        setClearKey(result.copy(2, keyBitsLength / 8));
+    }
+
+    private void verifyMAC(Bytes givenMAC) throws SecurityException {
+        if (!givenMAC.equals(MAC)) {
+            throw new SecurityException("MAC mismatch, given=" + givenMAC.encodeHex()
+                    + ", computed=" + MAC.encodeHex());
+        }
+    }
+
+    void generateMAC() throws Exception {
         switch (header.getKeyBlockType()) {
             case _0_THALES_DES:
                 //$FALL-THROUGH$
@@ -397,7 +427,7 @@ public class TR31KeyBlock {
                 }
                 catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
                         | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException(e);
                 }
 
                 break;
@@ -476,13 +506,13 @@ public class TR31KeyBlock {
         }
         catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
                 | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchPaddingException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         setEncryptLengthEncodedPaddedKey();
     }
 
 
-    public void setMessageMAC(Bytes result) {
+    void setMessageMAC(Bytes result) {
         this.MAC = result;
     }
 
@@ -494,9 +524,8 @@ public class TR31KeyBlock {
         return lengthEncodedPaddedClearKey;
     }
 
-    public void setEncryptedKey(Bytes encryptedKey) {
+    void setEncryptedKey(Bytes encryptedKey) {
         this.encryptedKey = encryptedKey;
-
     }
 
     public Bytes getEncryptedKey() {
@@ -582,12 +611,9 @@ public class TR31KeyBlock {
         rawKBPK = Bytes.parseHex(hexKBPK.replace(" ", ""));
 
         SecretKeySpec spec = new SecretKeySpec(Bytes.parseHex(hexKBPK.replace(" ", ""))
-                                                    .array(),
-                                               algorithm);
+                                                    .array(), algorithm);
         if ("DESede".equals(algorithm)) {
-            // byte[] temp = Util.adjustDESParity(key.getEncoded());
-            // SecretKeySpec spec = new SecretKeySpec(temp, key.getAlgorithm());
-            KBPK = convertToTripleLengthKey(spec);
+            KBPK = KeyHelper.convertToTripleLengthKey(spec);
         }
         else {
             KBPK = spec;
@@ -687,25 +713,23 @@ public class TR31KeyBlock {
         catch (Exception e) {
             e.printStackTrace();
             return kbpk + kbek + kbmk + kbmkmac + plainTextKey + macString + fullKeyBlockString;
-
         }
-
     }
 
-    public Bytes getRawKBPK() {
+    Bytes getRawKBPK() {
         return rawKBPK;
     }
 
-    public void setRawKBPK(Bytes rawKBPK) {
+    void setRawKBPK(Bytes rawKBPK) {
         this.rawKBPK = rawKBPK;
     }
 
     public void generate() throws Exception {
-        CMAC.deriveAllKeys(this);
+        KeyHelper.deriveAllKeys(this);
         generateMAC();
     }
 
-    public void setKeyTripletK1K2K3KBEK(Triplet<Bytes, Bytes, Bytes> triplet) {
+    void setKeyTripletK1K2K3KBEK(Triplet<Bytes, Bytes, Bytes> triplet) {
 
         Bytes tempKBEK = triplet.getValue0()
                                 .append(triplet.getValue1()
@@ -715,12 +739,12 @@ public class TR31KeyBlock {
             setKBEK(new SecretKeySpec(tempKBEK.array(), KBPK.getAlgorithm()));
         }
         catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
     }
 
-    public void setKeyTripletK1K2K3KBMK(Triplet<Bytes, Bytes, Bytes> triplet) {
+    void setKeyTripletK1K2K3KBMK(Triplet<Bytes, Bytes, Bytes> triplet) {
 
         Bytes tempKBMK = triplet.getValue0()
                                 .append(triplet.getValue1()
@@ -730,21 +754,17 @@ public class TR31KeyBlock {
             setKBMK(new SecretKeySpec(tempKBMK.array(), KBPK.getAlgorithm()));
         }
         catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
     }
 
-    public Triplet<Bytes, Bytes, Bytes> getTripletK1K2K3KBEK() {
+    Triplet<Bytes, Bytes, Bytes> getTripletK1K2K3KBEK() {
         return tripletK1K2K3KBEK;
     }
 
-    public Triplet<Bytes, Bytes, Bytes> getTripletK1K2K3KBMK() {
+    Triplet<Bytes, Bytes, Bytes> getTripletK1K2K3KBMK() {
         return tripletK1K2K3KBMK;
-    }
-
-    public String getDerivationConstantForK1K2GenerationOfAESKey() {
-        return "00000000000000000000000000000087";// used for KBPK and KBMK;
     }
 
     /**
@@ -752,7 +772,7 @@ public class TR31KeyBlock {
      *         A padded constant of 32 ASCII HEX (16 bytes), as hats the AES block
      *         size
      */
-    public Pair<String, String> getDerivationConstantPairFor256AESEncryptionForKBEK() {
+    Pair<String, String> getDerivationConstantPairFor256AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
@@ -763,9 +783,7 @@ public class TR31KeyBlock {
         return new Pair<>(constant1, constant2);
     }
 
-
-
-    public Pair<String, String> getDerivationConstantPairFor128AESEncryptionForKBEK() {
+    Pair<String, String> getDerivationConstantPairFor128AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
@@ -777,8 +795,7 @@ public class TR31KeyBlock {
 
     }
 
-
-    public Pair<String,String> getDerivationConstantPairFor128AESAuthenticationForKBMK() {
+    Pair<String,String> getDerivationConstantPairFor128AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1= DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
@@ -789,9 +806,7 @@ public class TR31KeyBlock {
         return new Pair<>(constant1, constant2);
     }
 
-
-
-    public Pair<String, String> getDerivationConstantPairFor192AESEncryptionForKBEK() {
+    Pair<String, String> getDerivationConstantPairFor192AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
@@ -803,7 +818,7 @@ public class TR31KeyBlock {
 
     }
 
-    public Pair<String, String> getDerivationConstantPairFor192AESAuthenticationForKBMK() {
+    Pair<String, String> getDerivationConstantPairFor192AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
@@ -815,7 +830,7 @@ public class TR31KeyBlock {
 
     }
 
-    public Pair<String, String> getDerivationConstantPairFor256AESAuthenticationForKBMK() {
+    Pair<String, String> getDerivationConstantPairFor256AESAuthenticationForKBMK() {
         String padding = "8000000000000000"; // 16 wide
         String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0001_MAC
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
@@ -826,8 +841,6 @@ public class TR31KeyBlock {
 
         return new Pair<>(constant1, constant2);
     }
-
-
 
     /**
      * Takes in an Enrypted keyblock and KBPK.
@@ -849,7 +862,8 @@ public class TR31KeyBlock {
         // Currently not handling optional headers so we know header is 16 wide
         header = new Header(keyBlock.substring(0, 16));
         setKBPK(kbpk);
-        CMAC.deriveAllKeys(this);
+        KeyHelper.deriveAllKeys(this);
+
         if (header.getKeyBlockType() == KeyblockType._D_AES_KEY_DERIVATION) {
             valid = validateKeyblockTypeAES_D(keyBlock);
 
