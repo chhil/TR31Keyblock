@@ -20,6 +20,8 @@ import at.favre.lib.bytes.Bytes;
 import at.favre.lib.bytes.BytesTransformer.ResizeTransformer.Mode;
 
 public class TR31KeyBlock {
+    
+    
 
     protected int                        BLOCKSIZE = 8;
     protected SecretKeySpec              KBPK;
@@ -409,7 +411,7 @@ public class TR31KeyBlock {
             case _A_KEY_VARIANT_BINDING: {
                 BLOCKSIZE = 8;
                 setEncryptLengthEncodedPaddedKey();
-
+                header.setLengthEncodedClearKeyLength(getLengthEncodedPaddedClearKey());
                 Bytes data = Bytes.from(getHeader().toString()
                                                    .getBytes())
                                   .append(getEncryptedKey());
@@ -469,6 +471,7 @@ public class TR31KeyBlock {
 
         generateLengthEncodedPaddedClearKey();
         Bytes lastBlock = null;
+        header.setLengthEncodedClearKeyLength(getLengthEncodedPaddedClearKey());
         Bytes data = Bytes.from(getHeader().toString()
                                            .getBytes())
                           .append(getLengthEncodedPaddedClearKey());// doesn't take encrypted key
@@ -550,6 +553,7 @@ public class TR31KeyBlock {
                 String transformation = "DESede/CBC/NoPadding";
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
                 setEncryptLengthEncodedPaddedKey(transformation, iv);
+                
                 break;
             }
 
