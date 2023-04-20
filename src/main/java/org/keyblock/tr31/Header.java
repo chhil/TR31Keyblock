@@ -2,6 +2,8 @@ package org.keyblock.tr31;
 
 import org.keyblock.utils.Util;
 
+import at.favre.lib.bytes.Bytes;
+
 public class Header {
     private KeyblockType keyBlockYtpe;
     private KeyUsage     keyUsage;
@@ -10,8 +12,9 @@ public class Header {
     private KeyUseFor    keyUseFor;
     private String       version;
 
-    private String       optionalBlock;
-    private String       reserved;
+    private String optionalBlock;
+    private String reserved;
+    private int    keyLength;
 
     public KeyblockType getKeyBlockType() {
         return keyBlockYtpe;
@@ -68,7 +71,8 @@ public class Header {
         int keyBlockLength = Integer.parseInt(header.substring(1, 5));
         // if (keyBlockLength != header.length()) {
         // throw new Exception(String.format(
-        // "header keblock length [%d] and received keyblock length [%d] don't match",
+        // "header keblock length [%d] and received keyblock length [%d] don't
+        // match",
         // keyBlockLength,
         // header.length()));
         // }
@@ -94,35 +98,49 @@ public class Header {
 
         StringBuilder temp = new StringBuilder();
 
-        int blocklength = 0;
+        int blocklength    = 0;
         int optionalblocks = 0;
 
         switch (getKeyBlockType()) {
             case _0_THALES_DES:
-                blocklength = 16 + optionalblocks + 48 + 8;
+                blocklength = 16 + optionalblocks + keyLength + 8;
                 break;
             case _1_THALES_AES:
-                blocklength = 16 + optionalblocks + 64 + 16;// #header, optional blocks,key len in ascii, mac
+                blocklength = 16 + optionalblocks + keyLength + 16;// #header,
+                                                                   // optional
+                                                                   // blocks,key
+                                                                   // len in
+                                                                   // ascii, mac
                 break;
 
             case _A_KEY_VARIANT_BINDING:
                 // header, optional blocks,encrypted key len in ascii, mac
-                // encrypted keylength is length of a triple length 3 DES key (24 bytes) which
+                // encrypted keylength is length of a triple length 3 DES key
+                // (24 bytes) which
                 // when transported , its in hex hence its 48
-                // e.g. 1 byte 0xC1 represented as string "C1" which is 2 bytes wide.Hence 24
+                // e.g. 1 byte 0xC1 represented as string "C1" which is 2 bytes
+                // wide.Hence 24
                 // bytes is translated to 48.
-                blocklength = 16 + optionalblocks + 48 + 8;
+                blocklength = 16 + optionalblocks + keyLength + 8;
 
                 break;
             case _B_TDEA_KEY_DERIVATION_BINDING:
 
-                blocklength = 16 + optionalblocks + 48 + 16;// #header, optional blocks,key len in ascii, mac
+                blocklength = 16 + optionalblocks + keyLength + 16;// #header,
+                                                                   // optional
+                                                                   // blocks,key
+                                                                   // len in
+                                                                   // ascii, mac
                 break;
             case _C_TDEA_KEY_VARIANT_BINDING:
-                blocklength = 16 + optionalblocks + 48 + 8;
+                blocklength = 16 + optionalblocks + keyLength + 8;
                 break;
             case _D_AES_KEY_DERIVATION:
-                blocklength = 16 + optionalblocks + 64 + 32;// #header, optional blocks,key len in ascii, mac
+                blocklength = 16 + optionalblocks + keyLength + 32;// #header,
+                                                                   // optional
+                                                                   // blocks,key
+                                                                   // len in
+                                                                   // ascii, mac
                 break;
 
             default:
@@ -154,6 +172,16 @@ public class Header {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    public void setKeyLength(int length) {
+        keyLength = length;
+
+    }
+
+    public void setLengthEncodedClearKeyLength(Bytes lengthEncodedPaddedClearKey) {
+        keyLength = lengthEncodedPaddedClearKey.length() * 2;
+
     }
 
 }
