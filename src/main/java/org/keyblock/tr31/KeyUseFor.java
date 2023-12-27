@@ -16,7 +16,7 @@ public enum KeyUseFor {
                        X_DERIVE_OTHER_KEYS("X"),
                        Y_CREATE_KEY_VARIANTS("Y");
 
-    private String useFor;
+    private final String useFor;
 
     KeyUseFor(String use) {
         this.useFor = use;

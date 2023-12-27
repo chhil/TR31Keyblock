@@ -2,10 +2,10 @@ package org.keyblock.utils;
 
 public class Util {
 
-    public static String padleft(String s, int len, char c) throws Exception {
+    public static String padLeft(String s, int len, char c) {
         s = s.trim();
         if (s.length() > len) {
-            throw new Exception("invalid len " + s.length() + "/" + len);
+            throw new IllegalArgumentException("invalid len " + s.length() + "/" + len);
         }
         StringBuilder d = new StringBuilder(len);
         int fill = len - s.length();

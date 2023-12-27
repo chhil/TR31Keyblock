@@ -8,7 +8,7 @@ public enum Export {
                     N_NON_EXPORTABLE("N"),
                     S_SENSITIVE_EXPORTABLE_UNDER_UNTRUSTED_KEY("S");
 
-    private String type;
+    private final String type;
 
     Export(String type) {
         this.type = type;
