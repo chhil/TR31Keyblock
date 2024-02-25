@@ -13,7 +13,7 @@ public enum DefinedOptionalBlockType {
      */
     _AL("AL"),
     /**
-     * Base Derviation Key Identifier for DUKPT type keys.
+     * Base Derivation Key Identifier for DUKPT type keys.
      */
     _BI("BI"),
     /**

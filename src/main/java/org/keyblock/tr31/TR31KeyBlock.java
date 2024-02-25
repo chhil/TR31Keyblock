@@ -42,10 +42,14 @@ public class TR31KeyBlock {
     private Triplet<Bytes, Bytes, Bytes> tripletK1K2K3KBEK;
     private Bytes                        clearKeyPadding;
 
+    private PaddingDataSource            paddingDataSource = new ZeroPaddingDataSource();
+
     /**
      * Create a key block with the given header, usually followed by calls to
      * {@link #setKBPK(String)}, {@link #setClearKey(Bytes)}, optionally
      * {@link #setClearKeyPadding(Bytes)} and finally {@link #generate()}.
+     * <p>
+     * The header should not have the length populated, it will be populated during generation.
      *
      * @param header the header for this keyblock
      */
@@ -281,20 +285,25 @@ public class TR31KeyBlock {
         lengthEncodedClearKey = encodedLength.append(clearKey);
         lengthEncodedPaddedClearKey = lengthEncodedClearKey.copy();
 
+        // If padding is already supplied start with that, it may not be sufficient though
+        if (clearKeyPadding != null) {
+            lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(clearKeyPadding);
+        }
+
         if (lengthEncodedPaddedClearKey.length() % BLOCKSIZE != 0) {
-            // At times either for testing you want to set a known value for the padding or
-            // when you receive a keyblock that has its own padding, we want to use that
-            // with the key so that we can validate the MAC generated later.
-            if (getClearKeyPadding() == null) {
-                // this creates a byte array initialized with 0x0
-                int padLength = BLOCKSIZE - (lengthEncodedClearKey.length() % BLOCKSIZE);
-                setClearKeyPadding(Bytes.from(new byte[padLength]));
+            // Additional padding is required to meet block size requirement
+            int padLength = BLOCKSIZE - (lengthEncodedPaddedClearKey.length() % BLOCKSIZE);
+            byte[] cipherBlockPadding = new byte[padLength];
+            paddingDataSource.nextBytes(cipherBlockPadding);
+
+            // Update the clear padding for record keeping
+            if (this.clearKeyPadding == null) {
+                clearKeyPadding = Bytes.from(cipherBlockPadding);
+            } else {
+                clearKeyPadding = clearKeyPadding.append(cipherBlockPadding);
             }
 
-            lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(getClearKeyPadding());
-            if (lengthEncodedPaddedClearKey.length() % BLOCKSIZE != 0) {
-                throw new IllegalArgumentException("Padded clear key not a multiple of block size");
-            }
+            lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(cipherBlockPadding);
         }
 
         header.updateKeyBlockLength(lengthEncodedPaddedClearKey.length());
@@ -322,11 +331,14 @@ public class TR31KeyBlock {
 
     /**
      * Decrypt, verify and populate the given key block using the key block protection key.
+     * <p>
+     * @param keyBlock The ASCII form is: header ASCII + confidential data hex + MAC hex
+     * @param kbpkHex Key block protection key in hex
      */
-    public void decryptKeyBlock(String keyBlock, String kbpk) throws Exception {
+    public void decryptKeyBlock(String keyBlock, String kbpkHex) throws Exception {
         header = new Header(keyBlock);
 
-        setKBPK(kbpk);
+        setKBPK(kbpkHex);
         KeyHelper.deriveAllKeys(this);
 
         // 2 hex ASCII chars per byte
@@ -509,7 +521,6 @@ public class TR31KeyBlock {
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
 
             result = Bytes.from(cipher.doFinal(data.array()));
-            System.out.println(result.encodeHex(true));
             setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost blocksize [16 or 8]
         }
         catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException
@@ -627,6 +638,16 @@ public class TR31KeyBlock {
 
     @Override
     public String toString() {
+        if (header == null || encryptedKey == null || MAC == null) {
+            return "invalid";
+        }
+
+        return header +
+                encryptedKey.encodeHex(true) +
+                MAC.encodeHex(true);
+    }
+
+    public String toDebugString() {
         String kbpk = null, kbek = null, kbmk = null, kbmkmac = null, plainTextKey = null, macString = null,
                 fullKeyBlockString = null;
         try {
@@ -980,15 +1001,72 @@ public class TR31KeyBlock {
 
     /**
      * Padding to use at the end of the clear key. If the padding is not set and the clear key is
-     * not a multiple of the block length then padding of zeros will be used; this is not secure
-     * but is useful for testing.
+     * not a multiple of the block length then additional padding will be obtained using the
+     * padding data source.
      */
     public void setClearKeyPadding(Bytes clearKeyPadding) {
         this.clearKeyPadding = clearKeyPadding;
+    }
+
+    /**
+     * Number of bytes to use at the end of the clear key. If the number of bytes does not
+     * result in a multiple of the block size then more padding will be added at the time
+     * the key block is generated using the padding data source.
+     */
+    public void setClearKeyPadding(int numBytes) {
+        if (numBytes == 0) {
+            return;
+        }
+
+        if (numBytes < 0) {
+            throw new IllegalArgumentException("Negative number of padding bytes not allowed");
+        }
+
+        byte[] padding = new byte[numBytes];
+        paddingDataSource.nextBytes(padding);
+        this.clearKeyPadding = Bytes.from(padding);
     }
 
     public Bytes getClearKeyPadding() {
         return clearKeyPadding;
     }
 
+    /**
+     * Set the padding data source for the generated key block, the default is zero byte padding
+     * which is not secure but useful for testing.
+     */
+    public void setPaddingDataSource(PaddingDataSource pds) {
+        this.paddingDataSource = pds;
+    }
+
+    /**
+     * X9.143 (successor to TR-31) mandate when the confidential data is an AES or TDEA key:
+     * <i>
+     * TDEA and AES symmetric keys SHALL be padded with random key length obfuscation padding to
+     * the maximum length for the algorithm, 192 bits for TDEA or 256 bits for AES.
+     * </i>
+     */
+    public void enforceKeyLengthObfuscationPadding() {
+        int keyLen = clearKey.length();
+        int keyLenObfuscationPaddingLen = 0;
+
+        switch (header.getAlgorithm()) {
+            case _A_AES: {
+                if (keyLen != (128 / 8) && keyLen != (192 / 8) && keyLen != (256 / 8)) {
+                    throw new IllegalStateException("Illegal confidential AES key size");
+                }
+                keyLenObfuscationPaddingLen = (256 / 8) - keyLen;
+            }
+            break;
+            case _T_TRIPLE_DES: {
+                if (keyLen != (128 / 8) && keyLen != (192 / 8)) {
+                    throw new IllegalStateException("Illegal confidential TDES key size");
+                }
+                keyLenObfuscationPaddingLen = (192 / 8) - keyLen;
+            }
+            break;
+        }
+
+        setClearKeyPadding(keyLenObfuscationPaddingLen);
+    }
 }

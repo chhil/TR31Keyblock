@@ -940,6 +940,45 @@ public class TR31KeyBlockTest {
         kb.setKBPK("88E1AB2A2E3DD38C1FA039A536500CC8A87AB9D62DC92C01058FA79F44657DE6");
 
         kb.generate();
+
+        new TR31KeyBlock().decryptKeyBlock(kb.toString(), kb.getRawKBPK().encodeHex());
+    }
+
+    @Test
+    @DisplayName("ANSI X9.143-2022 AES Key Block Strict Padding")
+    public void test128AESKeyBlockTypeDStrictPadding_Create() throws Exception {
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+                Export.N_NON_EXPORTABLE, Algorithm._A_AES,
+                KeyUseFor.E_ENCRYPT_ONLY, "00");
+
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("3F419E1CB7079442AA37474C2EFBF8B8"));
+        kb.enforceKeyLengthObfuscationPadding();
+
+        // Verify that 128-bit AES is padded to 256 bits
+        assertEquals(128 / 8, kb.getClearKeyPadding().length());
+    }
+
+    @Test
+    @DisplayName("ANSI X9.143-2022 TDEA Key Block Strict Padding")
+    public void testTwoKeyTDEAKeyBlockTypeBStrictPadding_Create() throws Exception {
+        Header header = new Header(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KeyUsage._P0_PIN_ENCRYPTION,
+                Export.N_NON_EXPORTABLE, Algorithm._T_TRIPLE_DES,
+                KeyUseFor.E_ENCRYPT_ONLY, "00");
+
+        TR31KeyBlock kb = new TR31KeyBlock(header);
+        kb.setClearKey(Bytes.parseHex("3F419E1CB7079442AA37474C2EFBF8B8"));
+        kb.enforceKeyLengthObfuscationPadding();
+
+        // Verify that two key TDEA is padded to 192 bits
+        assertEquals(64 / 8, kb.getClearKeyPadding().length());
+
+        kb.setKBPK("B8ED59E0A279A295E9F5ED7944FD06B9");
+        kb.generate();
+
+        String expectedKeyBlock =
+                "B0096P0TE00N000015407856C45CDC815917CD9EFF489CABF68DAFD7F5AD5CED845A2B55DB1353FC050AA63EFD192687";
+        assertEquals(expectedKeyBlock, kb.toString());
     }
 
 }

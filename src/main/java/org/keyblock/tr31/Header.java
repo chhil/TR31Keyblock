@@ -213,6 +213,8 @@ public class Header {
                 totalPadLen += cipherBlockSize;
             }
 
+            // Random padding is not necessary because the data is not confidential, ASCII '0' is
+            // used in examples and is acceptable even in production
             char[] padData = new char[totalPadLen];
             Arrays.fill(padData, '0');
             OptionalBlock padBlock = new OptionalBlock(DefinedOptionalBlockType._PB, new String(padData));
