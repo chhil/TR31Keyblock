@@ -1,6 +1,6 @@
 # TR31Keyblock
 
-Creates Ansi X9.24 TR31 key blocks taking inputs of the Key Block Protection Key (KBPK) and the clear key.
+Creates ASC X9 TR-31 (now ANSI X9.143) key blocks taking inputs of the Key Block Protection Key (KBPK) and the clear key.
 
 This is the Java implementation of work done here https://github.com/peterfillmore/pyTR31. It was used as a starting point and the spec was eventually implemented.
 Python files are also available in the python folder in the repo and work with python 2.7.
@@ -8,17 +8,17 @@ Python files are also available in the python folder in the repo and work with p
 The original python implementation is dated and incomplete (understandably, as it's 8+ years old). 
 
 This code implements TR31 keyblock types
-1.   A :VARIANT BINDING
-1.   B :TDEA KEY DERIVATION BINDING
+1.   A: VARIANT BINDING
+1.   B: TDEA KEY DERIVATION BINDING
       1. Double length 128 bits KBPK
       2. Triple length 192 bits KBPK
-1.   C :TDEA KEY VARIANT BINDING
-1.   D : AES KEY DERIVATION
+1.   C: TDEA KEY VARIANT BINDING
+1.   D: AES KEY DERIVATION
       1. 128 bits KBPK
       2. 192 bits KBPK
       3. 256 bits KBPK
 
-There is a validation implementation, when you get an encrypted keyblock and a KBPK and need to validate the TR31 keyblock received. It will generate all keys for the KBPK supplied,  extract the clear key from the TR31 keyblock, generate the MAC from the encrypted block and compare it to the one received.
+There is a validation implementation, when you get an encrypted keyblock and a KBPK and need to validate the TR31 keyblock received. It will generate all keys for the KBPK supplied, extract the clear key from the TR31 keyblock, generate the MAC from the encrypted block and compare it to the one received.
 
 The Main.java has tests for the various keyblock and key length combinations and is the best place to start and step through the code to understand its inner working.
 
@@ -36,13 +36,13 @@ EFTLABS tool used to be freely available, but now its licence has changed, and y
 3. Implement functionality in your HSM emulator to generate TR31 keyblock. (either you don't have access to an HSM that can do this for you or your HSM doesn't have the licences required from the vendor for this functionality.)
 4. Useful for local internal testing. (Never use this in production.)
 
-### Note : 
-Currently, optional header blocks are not supported.
+### Note :
 Thales keyblock is work in progress. Currently, Thales DES keyblock is supported. Thales AES keyblock is not working.
 
 Useful documents to refer to 
 
 1. [Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38b.pdf)
 2. [NIST SP 800-108 Recommendation for Key Derivation Using Pseudorandom Functions (Revised)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf)
-3. ASC X9 TR 31-2018 (purchase required from ANSI store).
+3. ASC X9 TR 31-2018 (purchase required from ANSI store, now historical).
+4. ANSI X9.143-2022 (purchase required from ANSI store, replaces TR-31 and latest as of 2023)
 

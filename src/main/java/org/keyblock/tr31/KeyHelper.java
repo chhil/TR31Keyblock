@@ -194,8 +194,8 @@ class KeyHelper {
                 Bytes kbpkBytes = Bytes.from(kb.getKBPK()
                                                .getEncoded());
 
-                String E = Util.padleft("", kbpkBytes.length(), 'E');
-                String M = Util.padleft("", kbpkBytes.length(), 'M');
+                String E = Util.padLeft("", kbpkBytes.length(), 'E');
+                String M = Util.padLeft("", kbpkBytes.length(), 'M');
 
                 Bytes kbekBytes = kbpkBytes.xor(Bytes.from(E));
                 Bytes kbmkBytes = kbpkBytes.xor(Bytes.from(M));
@@ -209,7 +209,6 @@ class KeyHelper {
 
                 kb.setKeyPairK1K2KBEK(kbekPair);
                 kb.setKeyPairK1K2KBMK(kbmkPair);
-
                 break;
             }
 
