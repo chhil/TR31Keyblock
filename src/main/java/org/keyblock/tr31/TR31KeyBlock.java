@@ -338,6 +338,13 @@ public class TR31KeyBlock {
     public void decryptKeyBlock(String keyBlock, String kbpkHex) throws Exception {
         header = new Header(keyBlock);
 
+        if (header.getKeyBlockLength() != keyBlock.length()) {
+            // Either header is wrong or key block input is wrong
+            String msg = String.format("Incorrect key block length (header specifies %d but given %d)",
+                    header.getKeyBlockLength(), keyBlock.length());
+            throw new IllegalArgumentException(msg);
+        }
+
         setKBPK(kbpkHex);
         KeyHelper.deriveAllKeys(this);
 

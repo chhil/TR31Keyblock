@@ -2,8 +2,6 @@ package org.keyblock.tr31;
 
 import org.keyblock.utils.Util;
 
-import at.favre.lib.bytes.Bytes;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -128,12 +126,17 @@ public class Header {
             .append(getVersion())
             .append(export.get())
             .append(Util.padLeft(String.valueOf(numOptionalBlocks), 2, '0'))
-            .append(reserved);
+            .append(reserved)
+            .append(buildOptBlocksString());
 
+        return temp.toString();
+    }
+
+    private String buildOptBlocksString() {
+        StringBuilder temp = new StringBuilder();
         for (OptionalBlock ob : optionalBlockList) {
             temp.append(ob.toString());
         }
-
         return temp.toString();
     }
 
@@ -150,6 +153,14 @@ public class Header {
      */
     public int getLength() {
         return toString().length();
+    }
+
+    /**
+     * Return the length of the entire key block including the header. May return 0 if the key
+     * block has not yet been constructed.
+     */
+    public int getKeyBlockLength() {
+        return keyBlockLength;
     }
 
     /**
@@ -172,7 +183,7 @@ public class Header {
             // Fixed header length + optional blocks length + confidential data ASCII hex length + MAC ASCII hex length
             setKeyBlockLength(
                     16
-                    + numOptionalBlocks
+                    + buildOptBlocksString().length()
                     + confidentialDataLength * 2
                     + getKeyBlockType().getMACLen() * 2);
         }

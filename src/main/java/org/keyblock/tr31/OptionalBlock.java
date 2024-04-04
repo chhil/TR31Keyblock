@@ -2,6 +2,9 @@ package org.keyblock.tr31;
 
 import org.keyblock.utils.Util;
 
+/**
+ * TR-31 optional block container.
+ */
 public class OptionalBlock {
 
     private final String id;
