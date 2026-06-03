@@ -945,6 +945,16 @@ public class TR31KeyBlockTest {
     }
 
     @Test
+    @DisplayName("Thales 2DES Keyblock Type 0 decrypt")
+    void testKeyBlockTypeThales2Des0Decrypt() throws Exception {
+        TR31KeyBlock kb = new TR31KeyBlock();
+        kb.decryptKeyBlock(
+                "00072P0TE00E0000547E12CFA8BDED84D3587FA6AA0C475C9D650EDCAED80A5552EF52C8",
+                "89E88CF7931444F334BD7547FC3F380C");
+        assertEquals(Bytes.parseHex("F03C141BEC83D26B169BDCD5B22AAF8F"), kb.getClearKey());
+    }
+
+    @Test
     @DisplayName("ANSI X9.143-2022 AES Key Block Strict Padding")
     public void test128AESKeyBlockTypeDStrictPadding_Create() throws Exception {
         Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,

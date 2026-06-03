@@ -363,6 +363,8 @@ public class TR31KeyBlock {
         switch (header.getKeyBlockType()) {
             case _A_KEY_VARIANT_BINDING:
                 //$FALL-THROUGH$
+            case _0_THALES_DES:
+                //$FALL-THROUGH$
             case _C_TDEA_KEY_VARIANT_BINDING: {
                 String headerStr = header.toString();
                 // IV is the first 8 chars (8 bytes) of the header
