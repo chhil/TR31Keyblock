@@ -20,25 +20,21 @@ class KeyHelper {
 
     private KeyHelper() { }
 
-    static final Cipher CIPHER_DES_EDE_ECB_NOPAD;
-    static final Cipher CIPHER_AES_ECB_NOPAD;
+    private static final String CIPHER_TDEA_ECB_NOPAD = "DESede/ECB/NoPadding";
+    private static final String CIPHER_AES_ECB_NOPAD = "AES/ECB/NoPadding";
 
-    static {
-        try {
-            CIPHER_DES_EDE_ECB_NOPAD = Cipher.getInstance("DESede/ECB/NoPadding");
-            CIPHER_AES_ECB_NOPAD = Cipher.getInstance("AES/ECB/NoPadding");
-        }
-        catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            throw new RuntimeException(e);
-        }
+    /**
+     * A new uninitialised cipher is returned on every call on purpose. Cipher is mutable and
+     * explicitly documented as not thread safe, so handing out shared instances would let
+     * concurrent key derivations re-initialise each other's cipher and silently derive keys
+     * under the wrong Key Block Protection Key.
+     */
+    static Cipher getCipherForK1K2TDEAGeneration() throws NoSuchAlgorithmException, NoSuchPaddingException {
+        return Cipher.getInstance(CIPHER_TDEA_ECB_NOPAD);
     }
 
-    static Cipher getCipherForK1K2TDEAGeneration() {
-        return CIPHER_DES_EDE_ECB_NOPAD;
-    }
-
-    static Cipher getCipherForK1K2AESGeneration() {
-        return CIPHER_AES_ECB_NOPAD;
+    static Cipher getCipherForK1K2AESGeneration() throws NoSuchAlgorithmException, NoSuchPaddingException {
+        return Cipher.getInstance(CIPHER_AES_ECB_NOPAD);
     }
 
     public static SecretKeySpec convertToTripleLengthKey(SecretKeySpec key) {

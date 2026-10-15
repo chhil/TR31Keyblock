@@ -756,7 +756,7 @@ public class TR31KeyBlockTest {
      *
      * @throws Exception
      */
-    //@Test
+    @Test
     @DisplayName("Thales Validate AES128 KBPK keyblock type 1")
     void decryptAndValidateAES128KeyBlockType1() throws Exception {
         TR31KeyBlock kb         = new TR31KeyBlock();
@@ -789,19 +789,15 @@ public class TR31KeyBlockTest {
                                                                            .getValue0());
         assertEquals(Bytes.allocate(0), kb.getKeyPairK1K2KBMK()
                                           .getValue1());
-        // The above pass implying we can get the Clear key using the KBEK.
-        // The following WILL FAIL. Implying the MAC key generated is not
-        // correct or the
-        // data used for MACing is not correct.
-        // Currently don't have a Thales spec that tells me what is the correct
-        // way for
-        // generating the MAC key and MACing data
+        // The MAC is an AES CMAC over the header concatenated with the encrypted key, truncated
+        // to the 64 leftmost bits. It is not the MAC that key block type D would produce, which
+        // is why this did not match before.
         assertEquals(Bytes.parseHex("459DED8BE95188D9"), kb.getMessageMAC());
 
     }
 
-    //@Test
-    @DisplayName("Thales Validate AES256 KBPK keyblock type 1: test will fail for MAC mismatch")
+    @Test
+    @DisplayName("Thales Validate AES256 KBPK keyblock type 1")
     void decryptAndValidateAES256KBPKeyBlockType1() throws Exception {
         TR31KeyBlock kb         = new TR31KeyBlock();
         String       keyBlock   = "10096P0TE00E0000CF29A901B5B5DA7028693D4BE058A7B366D3CD2F5862D94E97BCD6D9F28B414A377052CE7A04D821";
@@ -834,14 +830,9 @@ public class TR31KeyBlockTest {
                                                                            .getValue0());
         assertEquals(Bytes.parseHex("7C533BC73933513AF534A90F525308F2"), kb.getKeyPairK1K2KBMK()
                                                                            .getValue1());
-        // The above pass implying we can get the Clear key using the KBEK.
-        // The following WILL FAIL. Implying the MAC key generated is not
-        // correct or the
-        // data used for MACing is not correct.
-        // Currently don't have a Thales spec that tells me what is the correct
-        // way for
-        // generating the MAC key and MACing data
-        assertEquals(Bytes.parseHex("459DED8BE95188D9"), kb.getMessageMAC());
+        // The MAC is an AES CMAC over the header concatenated with the encrypted key, truncated
+        // to the 64 leftmost bits.
+        assertEquals(Bytes.parseHex("377052CE7A04D821"), kb.getMessageMAC());
 
     }
 

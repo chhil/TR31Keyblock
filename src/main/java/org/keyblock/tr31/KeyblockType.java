@@ -14,7 +14,13 @@ public enum KeyblockType {
                           _C_TDEA_KEY_VARIANT_BINDING("C", 4),
                           _D_AES_KEY_DERIVATION("D", 16),
                           _0_THALES_DES("0", 4),
-                          _1_THALES_AES("1", 16);
+                          /**
+                           * Proprietary Thales format, not covered by ASC X9 TR 31. The KBPK is AES
+                           * but the MAC is a truncated 8 byte TDEA CBC MAC, not a 16 byte CMAC, so
+                           * this is not interchangeable with {@link #_D_AES_KEY_DERIVATION}. See the
+                           * examples in the test sources for a real block.
+                           */
+                          _1_THALES_AES("1", 8);
 
     private final String type;
     private final int macLen;

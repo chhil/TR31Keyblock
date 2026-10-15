@@ -18,15 +18,25 @@ This code implements TR31 keyblock types
       2. 192 bits KBPK
       3. 256 bits KBPK
 
+And the two proprietary Thales keyblock types, which are not covered by ASC X9 TR 31
+1.   0: THALES TDEA (variant binding, 32 bit MAC)
+      1. Double length 128 bits KBPK
+      2. Triple length 192 bits KBPK
+1.   1: THALES AES (key derivation, encrypt-then-MAC, 64 bit MAC)
+      1. 128 bits KBPK
+      2. 192 bits KBPK
+      3. 256 bits KBPK
+
 There is a validation implementation, when you get an encrypted keyblock and a KBPK and need to validate the TR31 keyblock received. It will generate all keys for the KBPK supplied, extract the clear key from the TR31 keyblock, generate the MAC from the encrypted block and compare it to the one received.
 
 The Main.java has tests for the various keyblock and key length combinations and is the best place to start and step through the code to understand its inner working.
 
 This keyblocks generated have been tested with the EFTLABS BP-tools simulator by generating the keyblock using the code and pasting the output of  (header+encryptedkey+mac) into the simulator to see if it can parse it and show you the clear key that you had encrypted.
 EFTLAB BP-TOOLS was also used to generate keyblocks and used for validity testing in the code.
-The samples provided in the ANSI X9 TR 31-2018 have been tested and outputs matched.
+The samples provided in the ANSI X9 TR 31-2018 have been tested and outputs matched. Every
+intermediate value published in the Annex worked examples is asserted in the test suite.
 
-The code does padding of the pan, it uses 0x0 to pad (spec says use random values). Byte 0x0 was used to make it deterministic for every run, it can be easily changed to populate the padding array with a secure random generation. Also, the EFTLAB tool uses random bytes, so it may appear the data is not consistent when compared to the code's output as it will vary for each time you generate the keyblock for the same keys. As long as the clear key is fine, and the MAC can be validated, you are good.
+Padding of the clear key uses 0x00 by default, see the padding note below.
 
 EFTLABS tool used to be freely available, but now its licence has changed, and you need to fill out a form requesting it. I haven't received any response after filling out the form to download an updated version of their tool.
 
@@ -37,7 +47,25 @@ EFTLABS tool used to be freely available, but now its licence has changed, and y
 4. Useful for local internal testing. (Never use this in production.)
 
 ### Note :
-Thales keyblock is work in progress. Currently, Thales DES keyblock is supported. Thales AES keyblock is not working.
+Thales key block types 0 and 1 are proprietary and not described by ASC X9 TR 31. Their behaviour
+was determined by working backwards from real key blocks produced by the vendor, and both the
+wrapping and the unwrapping paths are covered by tests built from those blocks. Thales type 1
+derives its keys exactly as type D does, but it protects the block encrypt-then-MAC with an AES
+CMAC over the header and the encrypted key truncated to the 64 leftmost bits, which is not
+interchangeable with a type D block.
+
+### Building
+`./gradlew test` runs the test suite. If the Gradle wrapper JAR is missing from your checkout,
+regenerate it with `gradle wrapper` from a local Gradle install.
+
+### Padding
+The clear key is padded with 0x00 by default so that key block generation is reproducible, which
+is what makes the example vectors in the tests comparable. The spec asks for random padding, and
+X9.143 additionally requires padding out to the maximum key length so the length of the key being
+transported is not disclosed. For anything other than testing, call
+`setPaddingDataSource(new SecureRandomPaddingDataSource())` and `enforceKeyLengthObfuscationPadding()`.
+EFTLAB also uses random bytes, so data will not match byte for byte between runs even when the keys
+and MAC are correct.
 
 Useful documents to refer to 
 
