@@ -2,6 +2,10 @@
 
 Creates ASC X9 TR-31 (now ANSI X9.143) key blocks taking inputs of the Key Block Protection Key (KBPK) and the clear key.
 
+**Start here: [docs/USAGE.md](docs/USAGE.md)** — a guide to wrapping and unwrapping keys, with
+runnable examples for every feature: creating blocks, unwrapping, padding and key length
+obfuscation, optional blocks, asymmetric keys and certificates, error handling and security notes.
+
 This is the Java implementation of work done here https://github.com/peterfillmore/pyTR31. It was used as a starting point and the spec was eventually implemented.
 Python files are also available in the python folder in the repo and work with python 2.7.
 
@@ -14,6 +18,10 @@ This code implements TR31 keyblock types
       2. Triple length 192 bits KBPK
 1.   C: TDEA KEY VARIANT BINDING
 1.   D: AES KEY DERIVATION
+      1. 128 bits KBPK
+      2. 192 bits KBPK
+      3. 256 bits KBPK
+1.   E: ISO 20038 AES KEY DERIVATION (AES-CTR)
       1. 128 bits KBPK
       2. 192 bits KBPK
       3. 256 bits KBPK
@@ -54,6 +62,17 @@ derives its keys exactly as type D does, but it protects the block encrypt-then-
 CMAC over the header and the encrypted key truncated to the 64 leftmost bits, which is not
 interchangeable with a type D block.
 
+### Documentation
+[docs/USAGE.md](docs/USAGE.md) is the guide: wrapping and unwrapping with runnable examples, padding
+and key length obfuscation, optional blocks, asymmetric keys and certificates, type E, error
+handling and security notes. Two points worth reading before you use this for anything real:
+
+- Optional block *data* format checking on unwrap is opt in, via `decryptKeyBlock(block, kbpk, true)`.
+  It is off by default because real key blocks do not always comply, including the example published
+  in ANSI X9.143:2021 section 8.2. Header validation, on the other hand, is always applied.
+- Key blocks whose reserved field is not `00`, or which repeat an optional block ID, are now
+  rejected. Both are disallowed by A.5.6, but check any stored blocks you still need to unwrap.
+
 ### Building
 `./gradlew test` runs the test suite. If the Gradle wrapper JAR is missing from your checkout,
 regenerate it with `gradle wrapper` from a local Gradle install.
@@ -67,10 +86,18 @@ transported is not disclosed. For anything other than testing, call
 EFTLAB also uses random bytes, so data will not match byte for byte between runs even when the keys
 and MAC are correct.
 
+### Interoperability
+Beyond the examples published in the standards, the test suite also runs interoperability vectors
+from [openemv/tr31](https://github.com/openemv/tr31), an independent implementation of TR-31,
+X9.143 and ISO 20038 by Leon Lynch, across its decrypt, export, crypto and decode suites. Its
+AES-CTR key derivation vector exercises the type E path independently of this repository's own
+tests.
+
 Useful documents to refer to 
 
 1. [Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38b.pdf)
 2. [NIST SP 800-108 Recommendation for Key Derivation Using Pseudorandom Functions (Revised)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf)
 3. ASC X9 TR 31-2018 (purchase required from ANSI store, now historical).
 4. ANSI X9.143-2022 (purchase required from ANSI store, replaces TR-31 and latest as of 2023)
+5. ISO 20038:2017 (defines key block format version E).
 

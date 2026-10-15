@@ -292,6 +292,14 @@ public class TR31KeyBlock {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Key block format version E enciphers its confidential data with AES in CTR mode, which is a
+     * stream cipher, so the data is not padded out to a multiple of the block size.
+     */
+    private boolean isStreamCipherEncrypted() {
+        return header != null && header.getKeyBlockType() == KeyblockType._E_ISO20038_AES_KEY_DERIVATION;
+    }
+
     private void generateLengthEncodedPaddedClearKey() {
         if (lengthEncodedPaddedClearKey != null) {
             return;
@@ -304,6 +312,8 @@ public class TR31KeyBlock {
             BLOCKSIZE = 8;
         }
 
+        KeyBlockValidation.validateKeyLength(header.getAlgorithm(), clearKey.length());
+
         int keyLengthBits = clearKey.length() * 8;
         Bytes encodedLength = Bytes.parseHex(Util.padLeft(Integer.toHexString(keyLengthBits), 4, '0'));
         lengthEncodedClearKey = encodedLength.append(clearKey);
@@ -314,8 +324,10 @@ public class TR31KeyBlock {
             lengthEncodedPaddedClearKey = lengthEncodedPaddedClearKey.append(clearKeyPadding);
         }
 
-        if (lengthEncodedPaddedClearKey.length() % BLOCKSIZE != 0) {
-            // Additional padding is required to meet block size requirement
+        if (!isStreamCipherEncrypted() && lengthEncodedPaddedClearKey.length() % BLOCKSIZE != 0) {
+            // Additional padding is required to meet the block size requirement. A stream cipher
+            // such as the AES-CTR of key block format version E preserves the length of its input,
+            // so its confidential data is not rounded up to a multiple of the block size.
             int padLength = BLOCKSIZE - (lengthEncodedPaddedClearKey.length() % BLOCKSIZE);
             byte[] cipherBlockPadding = new byte[padLength];
             paddingDataSource.nextBytes(cipherBlockPadding);
@@ -362,7 +374,28 @@ public class TR31KeyBlock {
      * @param kbpkHex Key block protection key in hex
      */
     public void decryptKeyBlock(String keyBlock, String kbpkHex) throws Exception {
-        header = new Header(keyBlock);
+        decryptKeyBlock(keyBlock, kbpkHex, false);
+    }
+
+    /**
+     * Unwrap a key block, optionally validating the data of each optional block against the
+     * character format the standard requires for that optional block ID.
+     * <p>
+     * Strict validation is off by default. The example published in ANSI X9.143:2021 section 8.2
+     * has a KS optional block whose data is not hexadecimal, and key blocks produced by HSMs are
+     * known to do the same, so turning it on rejects some blocks that would otherwise unwrap.
+     * Turn it on when the sender is not trusted and you would rather reject than accept a block
+     * that does not comply.
+     *
+     * @param keyBlock
+     *            the header ASCII + confidential data hex + MAC hex
+     * @param kbpkHex
+     *            the Key Block Protection Key in hex
+     * @param strictOptionalBlockData
+     *            true to validate optional block data, false to only validate structure
+     */
+    public void decryptKeyBlock(String keyBlock, String kbpkHex, boolean strictOptionalBlockData) throws Exception {
+        header = new Header(keyBlock, strictOptionalBlockData);
 
         if (header.getKeyBlockLength() != keyBlock.length()) {
             // Either header is wrong or key block input is wrong
@@ -404,6 +437,8 @@ public class TR31KeyBlock {
                 break;
             }
 
+            case _E_ISO20038_AES_KEY_DERIVATION:
+                //$FALL-THROUGH$
             case _D_AES_KEY_DERIVATION: {
                 // IV is the first 16 bytes of the MAC
                 iv = givenMAC.copy(0, 16).array();
@@ -419,8 +454,10 @@ public class TR31KeyBlock {
             }
 
             default:
+                // Every KeyblockType is handled above, so reaching here means a type has been added
+                // without its IV rule. Fail loudly rather than guess.
                 throw new UnsupportedOperationException("Cannot unwrap a key block of type "
-                        + header.getKeyBlockType() + ", this implementation only supports A, B, C and D");
+                        + header.getKeyBlockType() + ", the IV it uses to decrypt is not defined");
         }
 
         decryptKeyBlock(iv);
@@ -429,8 +466,18 @@ public class TR31KeyBlock {
         verifyMAC(givenMAC);
     }
 
-private void decryptKeyBlock(byte[] iv) throws Exception {
-        String transformation = isAesEncrypted() ? "AES/CBC/NoPadding" : "DESede/CBC/NoPadding";
+    private void decryptKeyBlock(byte[] iv) throws Exception {
+        String transformation;
+        if (isStreamCipherEncrypted()) {
+            // The MAC is the initial counter block for the AES-CTR of format version E
+            transformation = "AES/CTR/NoPadding";
+        }
+        else if (isAesEncrypted()) {
+            transformation = "AES/CBC/NoPadding";
+        }
+        else {
+            transformation = "DESede/CBC/NoPadding";
+        }
 
         Cipher cipher = Cipher.getInstance(transformation);
         cipher.init(Cipher.DECRYPT_MODE, getKBEK(), new IvParameterSpec(iv));
@@ -511,6 +558,8 @@ private void decryptKeyBlock(byte[] iv) throws Exception {
                 break;
             }
 
+            case _E_ISO20038_AES_KEY_DERIVATION:
+                //$FALL-THROUGH$
             case _D_AES_KEY_DERIVATION: {
                 BLOCKSIZE = 16;
                 String transformation = "AES/CBC/NoPadding";
@@ -524,28 +573,28 @@ private void decryptKeyBlock(byte[] iv) throws Exception {
     }
 
     /**
- * Thales key block type 1 derives its keys exactly as key block type D does, but protects the
- * block encrypt-then-MAC like the variant binding types: the MAC is an AES CMAC over the cleartext
- * header concatenated with the encrypted key, truncated to the 64 leftmost bits. The MAC is not a
- * prefix or suffix of the CMAC produced for type D.
- */
-private void generateThalesAesMAC() {
-    Bytes data = Bytes.from(getHeader().toString()
-                                    .getBytes(StandardCharsets.US_ASCII))
-                      .append(getEncryptedKey());
+     * Thales key block type 1 derives its keys exactly as key block type D does, but protects the
+     * block encrypt-then-MAC like the variant binding types: the MAC is an AES CMAC over the cleartext
+     * header concatenated with the encrypted key, truncated to the 64 leftmost bits. The MAC is not a
+     * prefix or suffix of the CMAC produced for type D.
+     */
+    private void generateThalesAesMAC() {
+        Bytes data = Bytes.from(getHeader().toString()
+                                        .getBytes(StandardCharsets.US_ASCII))
+                          .append(getEncryptedKey());
 
-    try {
-        CMAC cmac = new CMAC(CMAC.Algorithm.AES, getKBMK()
-                                                    .getEncoded());
-        Bytes result = Bytes.from(cmac.generate(data.array()));
-        setMessageMAC(result.resize(8, Mode.RESIZE_KEEP_FROM_ZERO_INDEX));// leftmost 64 bits
+        try {
+            CMAC cmac = new CMAC(CMAC.Algorithm.AES, getKBMK()
+                                                        .getEncoded());
+            Bytes result = Bytes.from(cmac.generate(data.array()));
+            setMessageMAC(result.resize(8, Mode.RESIZE_KEEP_FROM_ZERO_INDEX));// leftmost 64 bits
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
-    catch (Exception e) {
-        throw new RuntimeException(e);
-    }
-}
 
-private void generateVariantMAC(String transformation) {
+    private void generateVariantMAC(String transformation) {
         Bytes data = Bytes.from(getHeader().toString().getBytes(StandardCharsets.US_ASCII))
                           .append(getEncryptedKey());
 
@@ -577,27 +626,27 @@ private void generateVariantMAC(String transformation) {
      * @param macSize
      *            the number of leading bytes of the rightmost block to keep as the MAC
      */
-protected void generateDerivationMAC(String transformation, int blocksize, int macSize) {
-    // The MAC is taken over the cleartext header concatenated with the length encoded padded
-    // clear key, it does not cover the encrypted key. See ASC X9 TR 31-2018 5.3.2.1.
-    Bytes data = Bytes.from(getHeader().toString()
-                                    .getBytes(StandardCharsets.US_ASCII))
-                      .append(getLengthEncodedPaddedClearKey());
+    protected void generateDerivationMAC(String transformation, int blocksize, int macSize) {
+        // The MAC is taken over the cleartext header concatenated with the length encoded padded
+        // clear key, it does not cover the encrypted key. See ASC X9 TR 31-2018 5.3.2.1.
+        Bytes data = Bytes.from(getHeader().toString()
+                                        .getBytes(StandardCharsets.US_ASCII))
+                          .append(getLengthEncodedPaddedClearKey());
 
-    try {
-        // Deliberately delegating to CMAC rather than repeating it here, CMAC is the single
-        // implementation and is covered by the NIST SP 800-38B test vectors.
-        CMAC.Algorithm algo = transformation.startsWith("AES") ? CMAC.Algorithm.AES : CMAC.Algorithm.TDES;
-        CMAC cmac = new CMAC(algo, getKBMK()
-                                    .getEncoded());
+        try {
+            // Deliberately delegating to CMAC rather than repeating it here, CMAC is the single
+            // implementation and is covered by the NIST SP 800-38B test vectors.
+            CMAC.Algorithm algo = transformation.startsWith("AES") ? CMAC.Algorithm.AES : CMAC.Algorithm.TDES;
+            CMAC cmac = new CMAC(algo, getKBMK()
+                                        .getEncoded());
 
-        Bytes result = Bytes.from(cmac.generate(data.array()));
-        setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost bytes [16 or 8]
+            Bytes result = Bytes.from(cmac.generate(data.array()));
+            setMessageMAC(result.resize(macSize, Mode.RESIZE_KEEP_FROM_MAX_LENGTH));// rightmost bytes [16 or 8]
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
-    catch (Exception e) {
-        throw new RuntimeException(e);
-    }
-}
 
     void setMessageMAC(Bytes result) {
         this.MAC = result;
@@ -649,6 +698,12 @@ protected void generateDerivationMAC(String transformation, int blocksize, int m
                 break;
             }
 
+            case _E_ISO20038_AES_KEY_DERIVATION: {
+                // ISO 20038:2017 uses AES in CTR mode, the MAC is the initial counter block
+                encryptWithKBEK("AES/CTR/NoPadding", getMessageMAC());
+                break;
+            }
+
             case _D_AES_KEY_DERIVATION: {
                 String transformation = "AES/CBC/NoPadding";
                 Bytes iv = getMessageMAC();// The MAC calculated is used as IV
@@ -688,6 +743,8 @@ protected void generateDerivationMAC(String transformation, int blocksize, int m
             case _1_THALES_AES:
                 //$FALL-THROUGH$
             case _D_AES_KEY_DERIVATION:
+                //$FALL-THROUGH$
+            case _E_ISO20038_AES_KEY_DERIVATION:
                 algorithm = "AES";
                 break;
             default:
@@ -866,16 +923,27 @@ protected void generateDerivationMAC(String transformation, int blocksize, int m
     }
 
     /**
+     * Key usage indicator to use when deriving the Key Block Encryption Key. Key block format
+     * version D derives in CBC mode (0x0000), version E derives in CTR mode (0x0002).
+     */
+    String encryptionKeyUsageIndicator() {
+        return header.getKeyBlockType() == KeyblockType._E_ISO20038_AES_KEY_DERIVATION
+                ? DerivationConstant._POS02_KEYUSAGE._0002_ENCRYPTION_CTR
+                : DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION;
+    }
+
+    /**
      * @return
      *         A padded constant of 32 ASCII HEX (16 bytes), as hats the AES block
      *         size
      */
     Pair<String, String> getDerivationConstantPairFor256AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String keyUsage = encryptionKeyUsageIndicator();
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
-        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0004_AES256
                 + DerivationConstant._POS05_KEYLENGTH._0100_AES256 + padding;
         return new Pair<>(constant1, constant2);
@@ -883,10 +951,11 @@ protected void generateDerivationMAC(String transformation, int blocksize, int m
 
     Pair<String, String> getDerivationConstantPairFor128AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String keyUsage = encryptionKeyUsageIndicator();
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
-        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0002_AES128
                 + DerivationConstant._POS05_KEYLENGTH._0080_AES128 + padding;
         return new Pair<>(constant1, constant2);
@@ -906,10 +975,11 @@ protected void generateDerivationMAC(String transformation, int blocksize, int m
 
     Pair<String, String> getDerivationConstantPairFor192AESEncryptionForKBEK() {
         String padding = "8000000000000000"; // 16 wide
-        String constant1 = DerivationConstant._POS01_COUNTER._01 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String keyUsage = encryptionKeyUsageIndicator();
+        String constant1 = DerivationConstant._POS01_COUNTER._01 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
-        String constant2 = DerivationConstant._POS01_COUNTER._02 + DerivationConstant._POS02_KEYUSAGE._0000_ENCRYPTION
+        String constant2 = DerivationConstant._POS01_COUNTER._02 + keyUsage
                 + DerivationConstant._POS03_00_SEPATATOR + DerivationConstant._POS04_ALGORITHM._0003_AES192
                 + DerivationConstant._POS05_KEYLENGTH._00C0_AES192 + padding;
         return new Pair<>(constant1, constant2);

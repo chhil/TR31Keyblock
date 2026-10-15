@@ -98,6 +98,74 @@ class OptionalBlockPaddingTest {
     }
 
     @Test
+    @DisplayName("No padding data when the optional blocks plus the padding block are already aligned")
+    void noPaddingDataWhenThePaddingBlockItselfCompletesTheAlignment() throws Exception {
+        // KC is 12 characters and KP is 16, which is 28. In a type D block the padding block's own
+        // 4 character overhead takes that to 32, already two 16 byte blocks, so PB carries no data.
+        // Emitting a whole block of padding instead makes the key block 16 characters longer than
+        // it needs to be, which is what the openemv/tr31 "Optional blocks KC and KP" vector
+        // catches.
+        Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,
+                Export.N_NON_EXPORTABLE, Algorithm._A_AES, KeyUseFor.E_ENCRYPT_ONLY, "00");
+        header.addOptionalBlocksAndPad(new OptionalBlock(DefinedOptionalBlockType._KC, "0057C409"),
+                new OptionalBlock(DefinedOptionalBlockType._KP, "012331550BC9"));
+
+        String headerString = header.toString();
+        assertTrue(headerString.endsWith("PB04"), "PB should hold no data, header was " + headerString);
+        assertEquals(48, headerString.length(), "header was " + headerString);
+        assertEquals(0, headerString.length() % 16, "header must stay block aligned: " + headerString);
+        assertEquals(3, Integer.parseInt(headerString.substring(12, 14)),
+                "expected KC, KP and PB, header was " + headerString);
+        assertEquals(headerString, new Header(headerString)
+                                         .toString());
+    }
+
+    @Test
+    @DisplayName("Padding data is the minimum that aligns the optional blocks")
+    void paddingDataIsTheMinimumThatAligns() throws Exception {
+        for (KeyblockType type : List.of(KeyblockType._C_TDEA_KEY_VARIANT_BINDING,
+                                         KeyblockType._D_AES_KEY_DERIVATION)) {
+            int cipherBlockSize = type.getCipherBlockSize();
+
+            for (int a = 0; a <= 20; a++) {
+                for (int b = 0; b <= 20; b++) {
+                    Header header = header(type);
+                    header.addOptionalBlocksAndPad(
+                            new OptionalBlock(DefinedOptionalBlockType._KS, repeat('1', a)),
+                            new OptionalBlock(DefinedOptionalBlockType._TS, repeat('2', b)));
+
+                    String headerString = header.toString();
+                    int blocks = (4 + a) + (4 + b);
+                    String where = "type " + type + " data lengths " + a + " and " + b + ", header "
+                            + headerString;
+
+                    assertEquals(0, headerString.length() % cipherBlockSize, where);
+
+                    if (blocks % cipherBlockSize == 0) {
+                        // already aligned, so no padding block may be added at all
+                        assertEquals(2, Integer.parseInt(headerString.substring(12, 14)), where);
+                        continue;
+                    }
+
+                    assertEquals(3, Integer.parseInt(headerString.substring(12, 14)), where);
+
+                    // the padding block is ID and length only, so its data length is the header
+                    // length less the fixed header and the two blocks that were added
+                    int padData = headerString.length() - 16 - blocks - 4;
+                    assertTrue(padData >= 0 && padData < cipherBlockSize,
+                            "padding of " + padData + " characters is not the smallest, " + where);
+                    assertEquals(0, (blocks + 4 + padData) % cipherBlockSize, where);
+                    // no smaller amount of padding would have aligned it
+                    for (int p = 0; p < padData; p++) {
+                        assertTrue((blocks + 4 + p) % cipherBlockSize != 0,
+                                "padding could have been " + p + " rather than " + padData + ", " + where);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     @DisplayName("Generated key block with optional blocks has a block size multiple length")
     void generatedKeyBlockIsBlockAligned() throws Exception {
         Header header = new Header(KeyblockType._D_AES_KEY_DERIVATION, KeyUsage._P0_PIN_ENCRYPTION,

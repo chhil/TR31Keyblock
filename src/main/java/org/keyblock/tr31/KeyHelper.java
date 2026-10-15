@@ -253,6 +253,12 @@ class KeyHelper {
                                // it encrypts the key correctly. However the K1K2KBMK or the CMACKM1KM2KBMK
                                // obtained from the K1K2KBMK is incorrect as the MAC value generatd is
                                // incorrect.
+            //$FALL-THROUGH$
+            case _E_ISO20038_AES_KEY_DERIVATION:// Derivation is identical to type D except that the
+                                               // key usage indicator of the encryption key is
+                                               // 0x0002 rather than 0x0000, see
+                                               // TR31KeyBlock.encryptionKeyUsageIndicator().
+            //$FALL-THROUGH$
             case _D_AES_KEY_DERIVATION: {
                 String derivationConstant = getDerivationConstantForK1K2GenerationOfAESKey();
                 kb.setKeyPairCMACK1K2KBPK(generateCMACK1K2KeysForKey(kb.getKBPK(), getCipherForK1K2AESGeneration(),

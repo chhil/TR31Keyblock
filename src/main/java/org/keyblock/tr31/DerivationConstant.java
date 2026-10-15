@@ -17,6 +17,10 @@ public class DerivationConstant {
     public static final class _POS02_KEYUSAGE {
         public static final String _0000_ENCRYPTION = "0000";
         public static final String _0001_MAC        = "0001";
+        /**
+         * Encryption in CTR mode, used by key block format version E only. See ISO 20038:2017.
+         */
+        public static final String _0002_ENCRYPTION_CTR = "0002";
     }
 
     public static final String _POS03_00_SEPATATOR = "00";

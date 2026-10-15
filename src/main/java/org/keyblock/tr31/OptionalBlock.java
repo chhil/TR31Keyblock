@@ -40,8 +40,10 @@ public class OptionalBlock {
 
         String lenEncoded;
         if (blockLength > 0xFF) {
-            // cannot use simple format, need to use extended format
-            blockLength = 2 + 2 + 4 + data.length();
+            // Extended form: a zero length field, then the number of characters in the length
+            // field, then the length itself. The length covers the whole block, so it includes
+            // the ID, the zero length field, the length of length field and the length field.
+            blockLength = 2 + 2 + 2 + 4 + data.length();
             lenEncoded = "00" + "04" + Util.padLeft(Integer.toString(blockLength, 16), 4, '0');
         } else {
             lenEncoded = Util.padLeft(Integer.toString(blockLength, 16), 2, '0');

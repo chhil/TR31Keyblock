@@ -11,6 +11,15 @@
 .idea
 build/
 
+# Eclipse / Buildship generated project metadata. Both are regenerated on import and are
+# machine specific: the Buildship preferences carry an absolute java.home and the absolute
+# paths of --init-script files Gradle wrote into a temp directory, none of which exist on
+# another machine and which break the IDE build there. The build itself is driven by
+# build.gradle and the Gradle wrapper, so it needs none of this.
+.classpath
+.project
+.settings/
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
@@ -31,3 +40,6 @@ hs_err_pid*
 /bin/
 /.gradle/
 /bin1/
+
+# agent scratch data
+.pi/
