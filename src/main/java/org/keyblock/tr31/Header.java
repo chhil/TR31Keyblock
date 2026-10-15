@@ -175,18 +175,18 @@ public class Header {
     }
 
     /**
-     * Updates the key block length using the given confidential data length. This operation is
-     * ignored if the key block length has already been set.
+     * Recomputes the key block length from the confidential data length. The length is a derived
+     * value, so it is always recalculated and never left at a previously generated value. This
+     * matters when a key block is regenerated after the clear key or its padding has changed,
+     * otherwise the block would declare the length of the previous key.
      */
     public void updateKeyBlockLength(int confidentialDataLength) {
-        if (keyBlockLength == 0) {
-            // Fixed header length + optional blocks length + confidential data ASCII hex length + MAC ASCII hex length
-            setKeyBlockLength(
-                    16
-                    + buildOptBlocksString().length()
-                    + confidentialDataLength * 2
-                    + getKeyBlockType().getMACLen() * 2);
-        }
+        // Fixed header length + optional blocks length + confidential data ASCII hex length + MAC ASCII hex length
+        setKeyBlockLength(
+                16
+                + buildOptBlocksString().length()
+                + confidentialDataLength * 2
+                + getKeyBlockType().getMACLen() * 2);
     }
 
     private void setOptionalBlockList(List<OptionalBlock> list) {
@@ -197,7 +197,11 @@ public class Header {
         }
     }
 
-    private static final int MIN_PAD_OPTIONAL_BLOCK_SIZE = 4;
+    /**
+     * Every Optional Block starts with a 2 character identifier followed by a 2 character length
+     * field, see {@link OptionalBlock#toString()}.
+     */
+    private static final int OPTIONAL_BLOCK_OVERHEAD = 4;
 
     /**
      * Adds the provided optional blocks and append a padding block as needed to ensure the header
@@ -210,7 +214,6 @@ public class Header {
 
         Collections.addAll(optionalBlockList, obs);
 
-        // Add a padding block if needed
         int totalLen = 0;
         for (OptionalBlock ob : obs) {
             totalLen += ob.toString().length();
@@ -218,11 +221,11 @@ public class Header {
 
         final int cipherBlockSize = keyBlockType.getCipherBlockSize();
         if (totalLen % cipherBlockSize != 0) {
-            int totalPadLen = totalLen % cipherBlockSize;
-
-            if (totalPadLen < MIN_PAD_OPTIONAL_BLOCK_SIZE) {
-                totalPadLen += cipherBlockSize;
-            }
+            // ASC X9 TR 31-2018 A.5.6: the padding block is formed so that its total length, when
+            // added to the combined total length of all other optional blocks, is a multiple of the
+            // encryption block size. That total length is the 2 character ID plus the 2 character
+            // length field plus the padding data, so only the remainder is available for data.
+            int totalPadLen = cipherBlockSize - ((totalLen + OPTIONAL_BLOCK_OVERHEAD) % cipherBlockSize);
 
             // Random padding is not necessary because the data is not confidential, ASCII '0' is
             // used in examples and is acceptable even in production
