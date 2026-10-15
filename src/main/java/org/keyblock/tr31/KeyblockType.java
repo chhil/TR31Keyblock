@@ -13,6 +13,15 @@ public enum KeyblockType {
                           _B_TDEA_KEY_DERIVATION_BINDING("B", 8),
                           _C_TDEA_KEY_VARIANT_BINDING("C", 4),
                           _D_AES_KEY_DERIVATION("D", 16),
+                          /**
+                           * Key block format version E, ISO 20038:2017. Derives its keys exactly
+                           * as {@link #_D_AES_KEY_DERIVATION} does, except that the key usage
+                           * indicator of the encryption key derivation input is 0x0002 instead of
+                           * 0x0000, and the confidential data is enciphered with AES in CTR mode
+                           * rather than CBC. Being a stream cipher, the confidential data is not
+                           * rounded up to a multiple of the block size.
+                           */
+                          _E_ISO20038_AES_KEY_DERIVATION("E", 16),
                           _0_THALES_DES("0", 4),
                           /**
                            * Proprietary Thales format, not covered by ASC X9 TR 31. The KBPK is AES
@@ -51,6 +60,8 @@ public enum KeyblockType {
     public boolean isAES() {
         switch (this) {
             case _D_AES_KEY_DERIVATION:
+            //$FALL-THROUGH$
+            case _E_ISO20038_AES_KEY_DERIVATION:
             //$FALL-THROUGH$
             case _1_THALES_AES: {
                 return true;
