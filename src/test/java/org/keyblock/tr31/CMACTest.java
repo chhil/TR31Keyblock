@@ -5,7 +5,19 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 /**
- * Test data taken from mbedTLS.
+ * CMAC test data.
+ * <p>
+ * The keys, messages and expected tags are the example values NIST publishes for
+ * <a href="https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values">
+ * SP 800-38B</a>, under "Examples with Intermediate Values": CMAC-AES and CMAC-TDES. They are the
+ * same vectors mbedTLS ships, copied here from that set.
+ * <p>
+ * They used to live in Appendix D of SP 800-38B itself. The 10-06-2016 update to that publication
+ * removed the examples and pointed at the page above instead, so they are no longer findable in
+ * the specification.
+ * <p>
+ * The {@code *_subkeys} arrays are the published K1 and K2 intermediates, which
+ * {@link #subkeysMatchThePublishedValues()} checks directly.
  */
 public class CMACTest {
 
@@ -114,6 +126,31 @@ public class CMACTest {
             byte[] cmacResult = new CMAC(CMAC.Algorithm.TDES, des3_3key_key).generate(message);
             assertArrayEquals(des3_3key_expected_result[i], cmacResult);
         }
+    }
+
+    /**
+     * The subkey values published as SP 800-38B Sec. 6.1 intermediates, asserted for every key the
+     * tests cover. These arrays carried the data already but nothing read them, so the conditional
+     * Rb XOR was only ever checked indirectly, by the tag agreeing. A wrong Rb still produces a
+     * self consistent tag when a key is used on its own, so it has to be pinned here.
+     */
+    @Test
+    void subkeysMatchThePublishedValues() throws Exception {
+        assertSubkeys(new CMAC(CMAC.Algorithm.TDES, des3_3key_key), des3_3key_subkeys[0],
+                des3_3key_subkeys[1], "3 key TDES");
+        assertSubkeys(new CMAC(CMAC.Algorithm.AES, aes_128_key), aes_128_subkeys[0], aes_128_subkeys[1],
+                "AES-128");
+        assertSubkeys(new CMAC(CMAC.Algorithm.AES, aes_192_key), aes_192_subkeys[0], aes_192_subkeys[1],
+                "AES-192");
+        assertSubkeys(new CMAC(CMAC.Algorithm.AES, aes_256_key), aes_256_subkeys[0], aes_256_subkeys[1],
+                "AES-256");
+    }
+
+    private static void assertSubkeys(CMAC cmac, byte[] expectedK1, byte[] expectedK2, String where) {
+        assertArrayEquals(expectedK1, cmac.subKey1()
+                                         .array(), where + " K1 does not match the published value");
+        assertArrayEquals(expectedK2, cmac.subKey2()
+                                         .array(), where + " K2 does not match the published value");
     }
 
     static final int[] aes_message_lengths = {

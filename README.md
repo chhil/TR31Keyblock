@@ -96,8 +96,9 @@ tests.
 Useful documents to refer to 
 
 1. [Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38b.pdf)
-2. [NIST SP 800-108 Recommendation for Key Derivation Using Pseudorandom Functions (Revised)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf)
-3. ASC X9 TR 31-2018 (purchase required from ANSI store, now historical).
-4. ANSI X9.143-2022 (purchase required from ANSI store, replaces TR-31 and latest as of 2023)
-5. ISO 20038:2017 (defines key block format version E).
+2. [Recommendation for Key Derivation Using Pseudorandom Functions, Rev. 1 update 1](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-108r1-upd1.pdf)
+3. [NIST example values, including CMAC](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values) — the home of the CMAC test vectors since the 10-06-2016 update to SP 800-38B removed them from Appendix D of the publication itself.
+4. ASC X9 TR 31-2018 (purchase required from ANSI store, now historical).
+5. ANSI X9.143-2022 (purchase required from ANSI store, replaces TR-31 and latest as of 2023)
+6. ISO 20038:2017 (defines key block format version E).
 
