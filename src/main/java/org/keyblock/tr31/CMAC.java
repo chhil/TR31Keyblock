@@ -50,6 +50,21 @@ public final class CMAC {
         this.key = key;
     }
 
+    /**
+     * The K1 subkey from NIST SP 800-38B Sec. 6.1, package visible so that the tests can pin it
+     * to the example values NIST publishes rather than only checking the final tag.
+     */
+    Bytes subKey1() {
+        return subKeys.getValue0();
+    }
+
+    /**
+     * The K2 subkey from NIST SP 800-38B Sec. 6.1.
+     */
+    Bytes subKey2() {
+        return subKeys.getValue1();
+    }
+
     public byte[] generate(byte[] message) throws Exception {
         switch (algo) {
             case TDES:

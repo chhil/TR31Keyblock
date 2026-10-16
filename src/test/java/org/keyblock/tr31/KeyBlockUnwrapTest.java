@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +22,8 @@ class KeyBlockUnwrapTest {
     private static final String KBPK_TDEA_2 = "DD7515F2BFC17F85CE48F3CA25CB21F6";
     private static final String KBPK_TDEA_3 = "260892192061C8760BDF235E1619B057B334FED0EFA74F32";
     private static final String KBPK_AES_256 = "88E1AB2A2E3DD38C1FA039A536500CC8A87AB9D62DC92C01058FA79F44657DE6";
+    private static final String KBPK_AES_128 = "FED02F85DF1989F76E4F15BC370764CE";
+    private static final String KBPK_AES_192 = "6BF89E64F80DBC70E9D6AEB03454E6544A67F725436E3BD3";
 
     private static String generate(KeyblockType type, String kbpk, String clearKey) throws Exception {
         Header header = new Header(type, KeyUsage._P0_PIN_ENCRYPTION, Export.E_EXPORTABLE_UNDER_TRUSTED_KEY,
@@ -132,6 +136,139 @@ class KeyBlockUnwrapTest {
         assertEquals(96, keyBlock.length());
         assertEquals(96, Integer.parseInt(keyBlock.substring(1, 5)));
         assertEquals("10096P0TE00E0000", keyBlock.substring(0, 16));
+    }
+
+/**
+ * The KBPK algorithm and its legal lengths follow the key block type, see
+ * {@link TR31KeyBlock#setKBPK(String)}: TDEA for A, B, C and the Thales 0, AES for D, E and
+ * the Thales 1. One table, used by every test below, so a combination that no test happens to
+ * touch cannot silently go unexercised and no test can pair a type with an illegal KBPK.
+ */
+private record KbpkCase(KeyblockType type, String kbpk, int kbpkBytes) { }
+
+private static List<KbpkCase> kbpkMatrix() {
+        return List.of(
+                new KbpkCase(KeyblockType._A_KEY_VARIANT_BINDING, KBPK_TDEA_2, 16),
+                new KbpkCase(KeyblockType._A_KEY_VARIANT_BINDING, KBPK_TDEA_3, 24),
+                new KbpkCase(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KBPK_TDEA_2, 16),
+                new KbpkCase(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KBPK_TDEA_3, 24),
+                new KbpkCase(KeyblockType._C_TDEA_KEY_VARIANT_BINDING, KBPK_TDEA_2, 16),
+                new KbpkCase(KeyblockType._C_TDEA_KEY_VARIANT_BINDING, KBPK_TDEA_3, 24),
+                new KbpkCase(KeyblockType._D_AES_KEY_DERIVATION, KBPK_AES_128, 16),
+                new KbpkCase(KeyblockType._D_AES_KEY_DERIVATION, KBPK_AES_192, 24),
+                new KbpkCase(KeyblockType._D_AES_KEY_DERIVATION, KBPK_AES_256, 32),
+                new KbpkCase(KeyblockType._E_ISO20038_AES_KEY_DERIVATION, KBPK_AES_128, 16),
+                new KbpkCase(KeyblockType._E_ISO20038_AES_KEY_DERIVATION, KBPK_AES_192, 24),
+                new KbpkCase(KeyblockType._E_ISO20038_AES_KEY_DERIVATION, KBPK_AES_256, 32),
+                new KbpkCase(KeyblockType._0_THALES_DES, KBPK_TDEA_2, 16),
+                new KbpkCase(KeyblockType._0_THALES_DES, KBPK_TDEA_3, 24),
+                new KbpkCase(KeyblockType._1_THALES_AES, KBPK_AES_128, 16),
+                new KbpkCase(KeyblockType._1_THALES_AES, KBPK_AES_192, 24),
+                new KbpkCase(KeyblockType._1_THALES_AES, KBPK_AES_256, 32));
+}
+
+@Test
+    @DisplayName("Every type round trips with every KBPK length that type accepts")
+    void everyTypeRoundTripsWithEveryLegalKbpkLength() throws Exception {
+        for (KbpkCase c : kbpkMatrix()) {
+            String where = c.type() + " with a " + c.kbpkBytes() + " byte KBPK";
+            // a 16 byte key is a valid double length TDEA key and a valid AES-128 key
+            String keyBlock = generate(c.type(), c.kbpk(), CLEAR_KEY_16);
+
+            TR31KeyBlock decrypted = new TR31KeyBlock();
+            decrypted.decryptKeyBlock(keyBlock, c.kbpk());
+
+            assertEquals(Bytes.parseHex(CLEAR_KEY_16), decrypted.getClearKey(), where);
+            assertEquals(c.type(), decrypted.getHeader()
+                                           .getKeyBlockType(), where);
+            assertEquals(keyBlock.length(), Integer.parseInt(keyBlock.substring(1, 5)),
+                    where + " declared the wrong length");
+
+            // The MAC is taken over the header, so a header that does not re-serialise to itself
+            // would authenticate against different bytes on the way back in
+            assertEquals(keyBlock.substring(0, decrypted.getHeader()
+                                                         .getLength()),
+                    decrypted.getHeader()
+                             .toString(), where + " header did not survive a round trip");
+        }
+    }
+
+    @Test
+    @DisplayName("A KBPK of the right length but the wrong value is rejected as a MAC failure")
+    void wrongKbpkValueIsRejectedCleanly() throws Exception {
+        for (KbpkCase c : kbpkMatrix()) {
+            String where = c.type() + " with a " + c.kbpkBytes() + " byte KBPK of the wrong value";
+            String keyBlock = generate(c.type(), c.kbpk(), CLEAR_KEY_16);
+
+            // same length, different value, so only the KBPK is wrong
+            StringBuilder other = new StringBuilder(c.kbpk());
+            other.setCharAt(0, c.kbpk().charAt(0) == '0' ? '1' : '0');
+
+            Throwable thrown = assertThrows(Throwable.class,
+                    () -> new TR31KeyBlock()
+                            .decryptKeyBlock(keyBlock, other.toString()), where);
+            assertTrue(thrown instanceof SecurityException,
+                    where + " was rejected with " + thrown.getClass().getName() + ": "
+                            + thrown.getMessage() + ", expected a SecurityException");
+        }
+    }
+
+    @Test
+    @DisplayName("A KBPK length the key block type cannot use is rejected with a clear message")
+    void illegalKbpkLengthIsRejectedClearly() {
+        // The KBPK algorithm is fixed by the type, so a length that algorithm cannot take is a
+        // caller error. Left to the JCE it surfaces as a bare "Wrong key size" from whichever
+        // Cipher is built first, which says nothing about which key or what was expected.
+        record Case(KeyblockType type, String kbpk, String expected) { }
+
+        Case[] cases = { new Case(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KBPK_AES_256,
+                                          "A TDEA key block protection key must be 16 or 24 bytes but was 32"),
+                new Case(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, "0011223344556677",
+                                          "A TDEA key block protection key must be 16 or 24 bytes but was 8"),
+                new Case(KeyblockType._A_KEY_VARIANT_BINDING, KBPK_AES_256,
+                                          "A TDEA key block protection key must be 16 or 24 bytes but was 32"),
+                new Case(KeyblockType._D_AES_KEY_DERIVATION, "0011223344556677",
+                                          "An AES key block protection key must be 16, 24 or 32 bytes but was 8"),
+                new Case(KeyblockType._D_AES_KEY_DERIVATION, "00112233445566778899AABBCCDDEEFF00112233",
+                                          "An AES key block protection key must be 16, 24 or 32 bytes but was 20"),
+                new Case(KeyblockType._E_ISO20038_AES_KEY_DERIVATION, "0011223344556677",
+                                          "An AES key block protection key must be 16, 24 or 32 bytes but was 8") };
+
+        for (Case c : cases) {
+            Header header = new Header(c.type(), KeyUsage._P0_PIN_ENCRYPTION,
+                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                    KeyUseFor.E_ENCRYPT_ONLY, "00");
+            TR31KeyBlock kb = new TR31KeyBlock(header);
+
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> kb.setKBPK(c.kbpk()), c.type() + " accepted a " + (c.kbpk().length() / 2)
+                            + " byte KBPK");
+            assertEquals(c.expected(), e.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("Every KBPK length a type accepts is still accepted")
+    void legalKbpkLengthsAreAccepted() throws Exception {
+        // the mirror of the test above, so tightening setKBPK cannot quietly narrow what works
+        for (KbpkCase c : kbpkMatrix()) {
+            Header header = new Header(c.type(), KeyUsage._P0_PIN_ENCRYPTION,
+                    Export.E_EXPORTABLE_UNDER_TRUSTED_KEY, Algorithm._T_TRIPLE_DES,
+                    KeyUseFor.E_ENCRYPT_ONLY, "00");
+            new TR31KeyBlock(header)
+                    .setKBPK(c.kbpk());
+        }
+    }
+
+    @Test
+    @DisplayName("A double length and a triple length TDEA KBPK are different keys")
+    void tdeaKbpkLengthsAreNotInterchangeable() throws Exception {
+        // A 16 byte TDEA KBPK is expanded to K1||K2||K1 before use, so wrapping with it and then
+        // unwrapping with the 24 byte form is using a different KBPK, not a shorter spelling of
+        // the same one.
+        String keyBlock = generate(KeyblockType._B_TDEA_KEY_DERIVATION_BINDING, KBPK_TDEA_2, CLEAR_KEY_16);
+
+        assertRejectedCleanly(keyBlock, KBPK_TDEA_3, "a 16 byte KBPK must not unwrap with the 24 byte one");
     }
 
     @Test
