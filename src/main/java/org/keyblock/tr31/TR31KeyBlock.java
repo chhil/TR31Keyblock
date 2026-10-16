@@ -5,6 +5,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.logging.Logger;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -21,6 +22,13 @@ import at.favre.lib.bytes.Bytes;
 import at.favre.lib.bytes.BytesTransformer.ResizeTransformer.Mode;
 
 public class TR31KeyBlock {
+
+    /**
+     * Diagnostics for the deprecated validate methods below, at FINE so that nothing is
+     * printed unless a caller asks for it. These used to go to stdout unconditionally,
+     * which printed the clear key of every block those methods unwrapped.
+     */
+    private static final Logger LOGGER = Logger.getLogger(TR31KeyBlock.class.getName());
 
     protected int                        BLOCKSIZE = 8;
     protected SecretKeySpec              KBPK;
@@ -753,6 +761,22 @@ public class TR31KeyBlock {
 
         rawKBPK = Bytes.parseHex(hexKBPK.replace(" ", ""));
 
+        // The KBPK algorithm is fixed by the key block type, so a length that algorithm cannot
+        // take is a caller error and is reported here, naming the key and what was expected.
+        // Left to the JCE it surfaces as a bare "Wrong key size" from whichever Cipher is
+        // constructed first. This mirrors the checks RandomKeys.generateKBPK makes, so both
+        // paths report the same thing.
+        if ("DESede".equals(algorithm)) {
+            if (rawKBPK.length() != 16 && rawKBPK.length() != 24) {
+                throw new IllegalArgumentException("A TDEA key block protection key must be 16 or 24 bytes but was "
+                        + rawKBPK.length());
+            }
+        }
+        else if (rawKBPK.length() != 16 && rawKBPK.length() != 24 && rawKBPK.length() != 32) {
+            throw new IllegalArgumentException(
+                    "An AES key block protection key must be 16, 24 or 32 bytes but was " + rawKBPK.length());
+        }
+
         SecretKeySpec spec = new SecretKeySpec(Bytes.parseHex(hexKBPK.replace(" ", ""))
                                                     .array(), algorithm);
         if ("DESede".equals(algorithm)) {
@@ -1047,24 +1071,24 @@ public class TR31KeyBlock {
         // 2 hex ASCII characters per byte, the Thales type 1 MAC is 8 bytes
         final int numMacHexChars = getMACLen() * 2;
 
-        System.out.println("Encrypted KeyBlock :" + keyBlock);
+        LOGGER.fine(() -> "Encrypted KeyBlock :" + keyBlock);
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - numMacHexChars));
-        System.out.println("From Encrypted Keyblock - MAC :" + tempMAC.encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - MAC :" + tempMAC.encodeHex(true));
 
         header = new Header(keyBlock);
         String headerString = header.toString();
-        System.out.println("From Encrypted Keyblock - header :" + headerString);
+        LOGGER.fine(() -> "From Encrypted Keyblock - header :" + headerString);
 
         setEncryptedKey(Bytes.parseHex(keyBlock.substring(headerString.length(), keyBlock.length()
                 - numMacHexChars)));
-        System.out.println("From Encrypted Keyblock - Encrypted Key : " + getEncryptedKey().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - Encrypted Key : " + getEncryptedKey().encodeHex(true));
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
         Bytes iv = Bytes.from(headerString);
-        System.out.println("IV : " + iv.encodeHex(true));
+        LOGGER.fine(() -> "IV : " + iv.encodeHex(true));
         IvParameterSpec ivSpec = new IvParameterSpec(iv.array());
         cipher.init(Cipher.DECRYPT_MODE, getKBEK(), ivSpec);
         Bytes result = Bytes.from(cipher.doFinal(encryptedKey.array()));
-        System.out.println("Decrypted Length Encode Padded ClearKey  :" + result.encodeHex(true));
+        LOGGER.fine(() -> "Decrypted Length Encode Padded ClearKey  :" + result.encodeHex(true));
         int keyBitsLength = Integer.parseInt(result.copy(0, 2) // length is hex ascii 4 hence 2 bytes
                                                    .encodeHex(true),
                 16);
@@ -1079,21 +1103,21 @@ public class TR31KeyBlock {
 
         generateMAC();
 
-        System.out.println("Encrypted Keyblock :" + keyBlock);
-        System.out.println("Code generated - Encrypted key :" + getEncryptedKey().encodeHex(true));
-        System.out.println("From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
+        LOGGER.fine(() -> "Encrypted Keyblock :" + keyBlock);
+        LOGGER.fine(() -> "Code generated - Encrypted key :" + getEncryptedKey().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
 
         if (!getMessageMAC().equals(tempMAC)) {
-            System.out.println(
-                    String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
+            LOGGER.fine(() -> String.format(
+                    "Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
+                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = false;
         }
         else {
-            System.out.println(String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
+            LOGGER.fine(() -> String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
+                tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = true;
         }
         return valid;
@@ -1104,7 +1128,7 @@ public class TR31KeyBlock {
 
         header = new Header(keyBlock);
         String headerString = header.toString();
-        System.out.println("From Encrypted Keyblock - header :" + headerString);
+        LOGGER.fine(() -> "From Encrypted Keyblock - header :" + headerString);
 
         Bytes tempMAC = Bytes.parseHex(keyBlock.substring(keyBlock.length() - 32));
         setEncryptedKey(Bytes.parseHex(keyBlock.substring(headerString.length(), keyBlock.length() - 32)));
@@ -1120,24 +1144,24 @@ public class TR31KeyBlock {
         setClearKeyPadding(result.copy(2 + keyBitsLength / 8, result.length() - (keyBitsLength / 8 + 2)));
         generateMAC();
 
-        System.out.println("Encrypted Keyblock :" + keyBlock);
-        System.out.println("From Encrypted Keyblock - Header :" + header);
+        LOGGER.fine(() -> "Encrypted Keyblock :" + keyBlock);
+        LOGGER.fine(() -> "From Encrypted Keyblock - Header :" + header);
 
-        System.out.println("From Encrypted Keyblock - Encrypted key :" + getEncryptedKey().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - Encrypted key :" + getEncryptedKey().encodeHex(true));
 
-        System.out.println("From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
-        System.out.println("From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - Length Encoded and padded clearkey :" + result.encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - clearkey :" + getClearKey().encodeHex(true));
+        LOGGER.fine(() -> "From Encrypted Keyblock - clearkey padding :" + getClearKeyPadding().encodeHex(true));
         if (!getMessageMAC().equals(tempMAC)) {
 
-            System.out.println(
-                    String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
-                            tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
+            LOGGER.fine(() -> String.format(
+                    "Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are NOT EQUAL.",
+                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = false;
         }
         else {
-            System.out.println(String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
-                    tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
+            LOGGER.fine(() -> String.format("Encrypted Keyblock MAC received [%s] and MAC calculated [%s] are EQUAL.",
+                tempMAC.encodeHex(true), getMessageMAC().encodeHex(true)));
             valid = true;
         }
         return valid;
